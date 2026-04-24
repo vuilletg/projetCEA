@@ -36,19 +36,53 @@ for tech in tech_configs:
     fig.add_trace(go.Scatter3d(
         x=data_x[tech["id"], year_id, :, 0, 0, 0],
         y=data_y[tech["id"], year_id, :, 0, 0, 0],
-        z=data_z[tech["id"], year_id, :, 17,11,0],
+        z=data_z[tech["id"], year_id, :, 17, 11, 0],
         name=tech["name"],
         mode='markers',
         marker=dict(color=tech["color"], size=3)
     ))
+    
+def creer_bouton(nom_colonne, axe_vise):
+    nouveaux_points = []
+    donnees_completes = get_data(nom_colonne)
+    
+    for i in range(Ntechno):
+        if axe_vise == 2:
+            points = donnees_completes[i, year_id, :, 17, 11, 0]
+        else:
+            points = donnees_completes[i, year_id, :, 0, 0, 0]
+        nouveaux_points.append(points)
+
+    nom_axe_plotly = ['xaxis', 'yaxis', 'zaxis'][axe_vise]
+    lettre_axe = ['x', 'y', 'z'][axe_vise]
+
+    return dict(
+        label=nom_colonne,
+        method="update",
+        args=[
+            {lettre_axe: nouveaux_points}, 
+            {f"scene.{nom_axe_plotly}.title.text": nom_colonne} 
+        ]
+    )
+
+menus_deroulants = []
+for i, label in enumerate(["X", "Y", "Z"]):
+    menus_deroulants.append(dict(
+        buttons=[creer_bouton(col, i) for col in param_dispo],
+        direction="down",
+        showactive=True,
+        x=0.1 + (i * 0.2),
+        y=1.1
+    ))
 
 fig.update_layout(
-    height=1000, 
-    width=1000,
+    updatemenus=menus_deroulants,
+    margin=dict(t=100),
     scene=dict(
-        xaxis_title=name_x,
-        yaxis_title=name_y,
-        zaxis_title=name_z
+        xaxis_title=param_dispo[0],
+        yaxis_title=param_dispo[1],
+        zaxis_title=param_dispo[2]
     )
 )
-plot(fig, auto_open=True)
+
+plot(fig)
