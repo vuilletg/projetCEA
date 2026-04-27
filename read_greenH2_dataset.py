@@ -1,88 +1,86 @@
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.offline import plot
+from dash import Dash, dcc, html, Input, Output
 
 df = pd.read_csv("MCfulldata_ntechno3_N100_pandas_L3251210.csv")
 
-Ntechno = 3
-Nyear = 3
 Nsample = 100
 usage_grid = [31, 31, 5]
 param_dispo = df.columns[2:]
 year_dispo = df["Year"].unique()
+Nyear = len(year_dispo)
 techno_dispo = df["Technology"].unique()
-
-name_x = param_dispo[0]
-name_y = param_dispo[1]
-name_z = param_dispo[2]
-col = ["blue", "red", "green", "cyan", "magenta", "yellow", "black", "orange", "purple"]
-print (param_dispo)
-year_id = 0 
-
-tech_configs = [
-    {"name": tech +"_" + str(year_dispo[year_id]), "id": i, "color": col[i]} for i, tech in enumerate(techno_dispo)
-]
+Ntechno = len(techno_dispo)
+colors = ["blue", "red", "green", "cyan", "magenta", "yellow", "black", "orange", "purple"]
 
 def get_data(column_name):
     return df[column_name].values.reshape(Ntechno, Nyear, Nsample, usage_grid[0], usage_grid[1], usage_grid[2])
 
-data_x = get_data(name_x)
-data_y = get_data(name_y)
-data_z = get_data(name_z)
+app = Dash(__name__)
 
-fig = go.Figure()
-
-for tech in tech_configs:
-    fig.add_trace(go.Scatter3d(
-        x=data_x[tech["id"], year_id, :, 0, 0, 0],
-        y=data_y[tech["id"], year_id, :, 0, 0, 0],
-        z=data_z[tech["id"], year_id, :, 17, 11, 0],
-        name=tech["name"],
-        mode='markers',
-        marker=dict(color=tech["color"], size=3)
-    ))
+app.layout = html.Div([
+    html.H1("visualisation des données Hydrogene", style={'textAlign': 'center', 'fontFamily': 'sans-serif'}),
     
-def creer_bouton(nom_colonne, axe_vise):
-    nouveaux_points = []
-    donnees_completes = get_data(nom_colonne)
-    
-    for i in range(Ntechno):
-        if axe_vise == 2:
-            points = donnees_completes[i, year_id, :, 17, 11, 0]
-        else:
-            points = donnees_completes[i, year_id, :, 0, 0, 0]
-        nouveaux_points.append(points)
+    html.Div([
+        html.Div([
+            html.Label("Axe X"),
+            dcc.Dropdown(id='x-axis-dropdown', options=param_dispo, value=param_dispo[0]),
+        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
 
-    nom_axe_plotly = ['xaxis', 'yaxis', 'zaxis'][axe_vise]
-    lettre_axe = ['x', 'y', 'z'][axe_vise]
+        html.Div([
+            html.Label("Axe Y"),
+            dcc.Dropdown(id='y-axis-dropdown', options=param_dispo, value=param_dispo[1]),
+        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
 
-    return dict(
-        label=nom_colonne,
-        method="update",
-        args=[
-            {lettre_axe: nouveaux_points}, 
-            {f"scene.{nom_axe_plotly}.title.text": nom_colonne} 
-        ]
-    )
+        html.Div([
+            html.Label("Axe Z"),
+            dcc.Dropdown(id='z-axis-dropdown', options=param_dispo, value=param_dispo[2]),
+        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
+        html.Div([
+            html.Label("année"),
+            dcc.Slider(id='year-slider',min=0, max=len(year_dispo) - 1,value=0,),
+        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
+    ], style={'backgroundColor': '#f9f9f9', 'padding': '20px', 'borderRadius': '10px'}),
 
-menus_deroulants = []
-for i, label in enumerate(["X", "Y", "Z"]):
-    menus_deroulants.append(dict(
-        buttons=[creer_bouton(col, i) for col in param_dispo],
-        direction="down",
-        showactive=True,
-        x=0.1 + (i * 0.2),
-        y=1.1
-    ))
+    dcc.Graph(id='plot', style={'height': '80vh'})
+])
 
-fig.update_layout(
-    updatemenus=menus_deroulants,
-    margin=dict(t=100),
-    scene=dict(
-        xaxis_title=param_dispo[0],
-        yaxis_title=param_dispo[1],
-        zaxis_title=param_dispo[2]
-    )
+@app.callback(
+    Output('plot', 'figure'),
+    Input('x-axis-dropdown', 'value'),
+    Input('y-axis-dropdown', 'value'),
+    Input('z-axis-dropdown', 'value'),
+    Input('year-slider', 'value')
 )
+def update_graph(x_col, y_col, z_col, year_value):
+    data_x = get_data(x_col)
+    data_y = get_data(y_col)
+    data_z = get_data(z_col)
+    year_id = year_value
+    fig = go.Figure()
 
-plot(fig)
+    for i, tech in enumerate(techno_dispo):
+        fig.add_trace(go.Scatter3d(
+            x=data_x[i, year_id, :, 0, 0, 0],
+            y=data_y[i, year_id, :, 0, 0, 0],
+            z=data_z[i, year_id, :, 17, 11, 0],
+            name=f"{tech}_{year_dispo[year_id]}",
+            mode='markers',
+            marker=dict(color=colors[i % len(colors)], size=4, opacity=0.8)
+        ))
+
+    fig.update_layout(
+        scene=dict(
+            xaxis_title=x_col,
+            yaxis_title=y_col,
+            zaxis_title=z_col,
+            bgcolor="#ffffff"
+        ),
+        margin=dict(l=0, r=0, b=0, t=50),
+        hovermode='closest'
+    )
+
+    return fig
+
+if __name__ == '__main__':
+    app.run(debug=True)
