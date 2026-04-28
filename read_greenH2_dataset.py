@@ -25,24 +25,31 @@ app.layout = html.Div([
         html.Div([
             html.Label("Axe X"),
             dcc.Dropdown(id='x-axis-dropdown', options=param_dispo, value=param_dispo[0]),
-        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
+        ], className="dropdown-container"),
 
         html.Div([
             html.Label("Axe Y"),
             dcc.Dropdown(id='y-axis-dropdown', options=param_dispo, value=param_dispo[1]),
-        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
+        ], className="dropdown-container"),
 
         html.Div([
             html.Label("Axe Z"),
             dcc.Dropdown(id='z-axis-dropdown', options=param_dispo, value=param_dispo[2]),
-        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
+        ], className="dropdown-container"),
         html.Div([
-            html.Label("année"),
-            dcc.Slider(id='year-slider',min=0, max=len(year_dispo) - 1,value=0,),
-        ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
-    ], style={'backgroundColor': '#f9f9f9', 'padding': '20px', 'borderRadius': '10px'}),
+            html.Label("Année"),
+            dcc.Slider(
+                id='year-slider',
+                min=0,
+                max=Nyear - 1,
+                value=0,
+                marks={i: year_dispo[i] for i in range(Nyear)},
+                step=None
+            ),
+        ], className="slider-container"),
+    ], className="control-panel"),
 
-    dcc.Graph(id='plot', style={'height': '80vh'})
+    dcc.Graph(id='plot', className="graph-container")
 ])
 
 @app.callback(
