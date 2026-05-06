@@ -5,7 +5,6 @@ import os
 
 df = None
 Nsample = 100
-usage_grid = [31, 31, 5]
 
 def process_data(dataframe):
     cols = dataframe.columns
@@ -16,7 +15,7 @@ def process_data(dataframe):
     
     y_dispo = dataframe["Year"].unique()
     t_dispo = dataframe["Technology"].unique()
-    
+
     return p_dispo, c_dispo, cr_dispo, y_dispo, t_dispo
 
 app = Dash(__name__)
@@ -48,7 +47,16 @@ def update_all_data(n_clicks, filename):
     
     if n_clicks > 0:
         if os.path.exists(filename):
-            df = pd.read_csv(filename)
+            temp_head = pd.read_csv(filename, nrows=0)
+            dtype_map = {}
+            for col in temp_head.columns:
+                if col == 'Technology':
+                    dtype_map[col] = 'category'
+                elif col == 'Year':
+                    dtype_map[col] = 'int16'
+                else:
+                    dtype_map[col] = 'float32' 
+            df = pd.read_csv(filename, engine='pyarrow', dtype=dtype_map)
         else:
             return html.Div([html.H3(f"Erreur : Le fichier '{filename}' est introuvable.")])
 
@@ -67,13 +75,14 @@ def update_all_data(n_clicks, filename):
             dcc.Dropdown(id='x-tech', options=param_options, value=param_dispo[0]),
             dcc.Dropdown(id='y-tech', options=param_options, value=param_dispo[1]),
             dcc.Dropdown(id='z-tech', options=param_options, value=param_dispo[2]),
-            dcc.Slider(id='year-slider', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
+            dcc.Slider(id='year-slider-tech', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             dcc.Graph(id='tech_plot')
         ]),
         html.Div([
             html.H2("Contexte"),
             dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
             dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
+            dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             dcc.Graph(id='cont_plot')
         ]),
         html.Div([
@@ -92,28 +101,30 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
     
     fig = go.Figure()
     Ntech = len(techno_dispo)
-    
+    points_per_tech_year = len(df) // (Ntech * len(year_dispo))
     try:
-        data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample, *usage_grid)
-        data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample, *usage_grid)
+        data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample, points_per_tech_year // Nsample)
+        data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample, points_per_tech_year // Nsample)
         
         for i, tech in enumerate(techno_dispo):
             z_vals = [0] * Nsample
             if z_col:
-                data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample, *usage_grid)
-                z_vals = data_z[i, year_idx, :, 17, 11, 0]
+                data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample, points_per_tech_year // Nsample)
+                z_vals = data_z[i, year_idx, :, 0]
                 fig.add_trace(go.Scatter3d(
-                    x=data_x[i, year_idx, :, 0, 0, 0],
-                    y=data_y[i, year_idx, :, 0, 0, 0],
+                    x=data_x[i, year_idx, :, 0],
+                    y=data_y[i, year_idx, :, 0],
                     z=z_vals,
                     name=f"{tech}",
                     mode='markers',
                     marker=dict(size=4)
                 ))
             else:
+                points_x = data_x[i, year_idx, :, 1]
+                points_y = data_y[i, year_idx, :, 1]
                 fig.add_trace(go.Scatter(
-                    x=data_x[i, year_idx, :, 0, 0, 0],
-                    y=data_y[i, year_idx, :, 0, 0, 0],
+                    x=points_x,
+                    y=points_y,
                     name=f"{tech}",
                     mode='markers',
                     marker=dict(size=4)
@@ -124,11 +135,11 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
         
     return fig
 
-@app.callback(Output('tech_plot', 'figure'), [Input('x-tech', 'value'), Input('y-tech', 'value'), Input('z-tech', 'value'), Input('year-slider', 'value')])
+@app.callback(Output('tech_plot', 'figure'), [Input('x-tech', 'value'), Input('y-tech', 'value'), Input('z-tech', 'value'), Input('year-slider-tech', 'value')])
 def update_t(x, y, z, yr): return create_fig(x, y, z, yr)
 
-@app.callback(Output('cont_plot', 'figure'), [Input('x-cont', 'value'), Input('y-cont', 'value')])
-def update_co(x, y): return create_fig(x, y)
+@app.callback(Output('cont_plot', 'figure'), [Input('x-cont', 'value'), Input('y-cont', 'value'), Input('year-slider-cont', 'value')])
+def update_co(x, y, yr): return create_fig(x, y, year_idx=yr)
 
 @app.callback(Output('crit_plot', 'figure'), [Input('x-crit', 'value'), Input('y-crit', 'value')])
 def update_cr(x, y): return create_fig(x, y)
