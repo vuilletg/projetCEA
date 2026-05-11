@@ -5,19 +5,21 @@ from dash import Dash, dcc, html, Input, Output, State
 import os
 
 df = None
-Nsample = 100
-
+Nsample =0
 def process_data(dataframe):
     cols = dataframe.columns
 
     p_dispo = [c for c in cols if c.startswith('T_')]
     c_dispo = [c for c in cols if c.startswith('CO_')]
     cr_dispo = [c for c in cols if c.startswith('CR_')]
-    
+    usagegrid = []
+    for c in c_dispo:
+        tmp = dataframe[c].unique()
+        usagegrid.append(len(tmp))
     y_dispo = dataframe["Year"].unique()
     t_dispo = dataframe["Technology"].unique()
 
-    return p_dispo, c_dispo, cr_dispo, y_dispo, t_dispo
+    return p_dispo, c_dispo, cr_dispo, y_dispo, t_dispo, usagegrid
 
 app = Dash(__name__)
 
@@ -72,7 +74,7 @@ def create_boxplot(y_col):
     State('input-filename', 'value'),
 )
 def update_all_data(n_clicks, filename):
-    global df, param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo
+    global df, param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo, usagegrid
     
     if n_clicks > 0:
         if os.path.exists(filename):
@@ -92,7 +94,7 @@ def update_all_data(n_clicks, filename):
     if df is None:
         return html.Div([html.H3("Entrez un nom de fichier et cliquez sur Appliquer")])
     
-    param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo = process_data(df)
+    param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo, usagegrid = process_data(df)
     Nyear = len(year_dispo)
     param_options = [{'label': p.split('_')[-1], 'value': p} for p in param_dispo]
     contexte_option = [{'label': c.split('_')[-1], 'value': c} for c in contexte_dispo]
@@ -112,12 +114,19 @@ def update_all_data(n_clicks, filename):
             dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
             dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
             dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
+            for i, c in enumerate(contexte_dispo):
+                if c not 
+                dcc.Slider(
+                    id={'type': 'cont-slider', 'index': i},
+                    min=0, max=usagegrid[i]-1, value=0,
+                    marks={j: str(df[c].unique()[j]) for j in range(usagegrid[i])},
+                    step=None
+                )
             dcc.Graph(id='cont_plot')
         ]),
         html.Div([
             html.H2("Critères"),
 
-            # Ajouter RADIO BUTTON
             dcc.RadioItems(
                 id='crit-plot-mode',
                 options=[
@@ -139,31 +148,32 @@ def update_all_data(n_clicks, filename):
 def create_fig(x_col, y_col, z_col=None, year_idx=0):
     if x_col is None or y_col is None or df is None:
         return go.Figure()
-
-    
+    sum = 1
+    for i in range(len(usagegrid)):
+        sum *= usagegrid[i]
     fig = go.Figure()
     Ntech = len(techno_dispo)
-    points_per_tech_year = len(df) // (Ntech * len(year_dispo))
+    Nsample = len(df) // (Ntech * len(year_dispo) * sum)
     try:
-        data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample, points_per_tech_year // Nsample)
-        data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample, points_per_tech_year // Nsample)
+        data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample,  *usagegrid)
+        data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample, *usagegrid)
         
         for i, tech in enumerate(techno_dispo):
             z_vals = [0] * Nsample
             if z_col:
-                data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample, points_per_tech_year // Nsample)
-                z_vals = data_z[i, year_idx, :, 0]
+                data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample,  *usagegrid)
+                z_vals = data_z[i, year_idx, :, 0,0,0]
                 fig.add_trace(go.Scatter3d(
-                    x=data_x[i, year_idx, :, 0],
-                    y=data_y[i, year_idx, :, 0],
+                    x=data_x[i, year_idx, :, 0,0,0],
+                    y=data_y[i, year_idx, :, 0,0,0],
                     z=z_vals,
                     name=f"{tech}",
                     mode='markers',
                     marker=dict(size=4)
                 ))
             else:
-                points_x = data_x[i, year_idx, :, 1]
-                points_y = data_y[i, year_idx, :, 1]
+                points_x = data_x[i, year_idx, :, 0,0,0]
+                points_y = data_y[i, year_idx, :, 0,0,0]
                 fig.add_trace(go.Scatter(
                     x=points_x,
                     y=points_y,

@@ -8,6 +8,6 @@ cloner le projet dans un repertoire local
 
 ensuite installer les dependance necessaires
 
-``` pip install panda plotly plotly dash ```
+``` pip install panda plotly plotly dash pyarrow```
 
 ## Utilisation
