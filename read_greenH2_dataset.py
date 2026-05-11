@@ -9,9 +9,9 @@ Nsample =0
 def process_data(dataframe):
     cols = dataframe.columns
 
-    p_dispo = [c for c in cols if c.startswith('T_')]
-    c_dispo = [c for c in cols if c.startswith('CO_')]
-    cr_dispo = [c for c in cols if c.startswith('CR_')]
+    p_dispo = [c for c in cols if c.startswith('TECHNICAL ')]
+    c_dispo = [c for c in cols if c.startswith('CONTEXT ')]
+    cr_dispo = [c for c in cols if c.startswith('CRITERIA')]
     usagegrid = []
     for c in c_dispo:
         tmp = dataframe[c].unique()
@@ -45,7 +45,7 @@ def create_boxplot(y_col):
     if y_col is None or df is None:
         return go.Figure()
     
-    clean_label = y_col.split('_')[-1]
+    clean_label = y_col.split(' ')[1:]
 
     fig = px.box(
         df,
@@ -96,10 +96,10 @@ def update_all_data(n_clicks, filename):
     
     param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo, usagegrid = process_data(df)
     Nyear = len(year_dispo)
-    param_options = [{'label': p.split('_')[-1], 'value': p} for p in param_dispo]
-    contexte_option = [{'label': c.split('_')[-1], 'value': c} for c in contexte_dispo]
-    criteria_options = [{'label': cr.split('_')[-1], 'value': cr} for cr in criteria_dispo]
-    
+    param_options = [{'label': p.split(' ')[-1], 'value': p} for p in param_dispo]
+    contexte_option = [{'label': c.split(' ')[-1], 'value': c} for c in contexte_dispo]
+    criteria_options = [{'label': cr.split(' ')[-1], 'value': cr} for cr in criteria_dispo]
+
     return html.Div([
         html.Div([
             html.H2("Technique"),
@@ -114,14 +114,6 @@ def update_all_data(n_clicks, filename):
             dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
             dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
             dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
-            for i, c in enumerate(contexte_dispo):
-                if c not 
-                dcc.Slider(
-                    id={'type': 'cont-slider', 'index': i},
-                    min=0, max=usagegrid[i]-1, value=0,
-                    marks={j: str(df[c].unique()[j]) for j in range(usagegrid[i])},
-                    step=None
-                )
             dcc.Graph(id='cont_plot')
         ]),
         html.Div([
@@ -148,32 +140,43 @@ def update_all_data(n_clicks, filename):
 def create_fig(x_col, y_col, z_col=None, year_idx=0):
     if x_col is None or y_col is None or df is None:
         return go.Figure()
-    sum = 1
-    for i in range(len(usagegrid)):
-        sum *= usagegrid[i]
+    
+    # Calculer le produit des éléments de usagegrid
+    product_usagegrid = 1
+    for val in usagegrid:
+        product_usagegrid *= val
+        
     fig = go.Figure()
     Ntech = len(techno_dispo)
-    Nsample = len(df) // (Ntech * len(year_dispo) * sum)
+    # Nsample_per_combination est le nombre d'échantillons par combinaison de Technologie, Année et paramètres de Contexte
+    Nsample_per_combination = len(df) // (Ntech * len(year_dispo) * product_usagegrid)
+    
+    # Créer un slice pour les paramètres de contexte afin de sélectionner la première valeur de chacun
+    context_slice_indices = (0,) * len(usagegrid)
+
     try:
-        data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample,  *usagegrid)
-        data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample, *usagegrid)
+        # Remodeler les données pour inclure les dimensions pour la Technologie, l'Année, Nsample et chaque paramètre de Contexte
+        data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample_per_combination, *usagegrid)
+        data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample_per_combination, *usagegrid)
         
         for i, tech in enumerate(techno_dispo):
-            z_vals = [0] * Nsample
+            z_vals = [0] * Nsample_per_combination
             if z_col:
-                data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample,  *usagegrid)
-                z_vals = data_z[i, year_idx, :, 0,0,0]
+                data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample_per_combination, *usagegrid)
+                # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
+                z_vals = data_z[i, year_idx, :, *context_slice_indices]
                 fig.add_trace(go.Scatter3d(
-                    x=data_x[i, year_idx, :, 0,0,0],
-                    y=data_y[i, year_idx, :, 0,0,0],
+                    x=data_x[i, year_idx, :, *context_slice_indices],
+                    y=data_y[i, year_idx, :, *context_slice_indices],
                     z=z_vals,
                     name=f"{tech}",
                     mode='markers',
                     marker=dict(size=4)
                 ))
             else:
-                points_x = data_x[i, year_idx, :, 0,0,0]
-                points_y = data_y[i, year_idx, :, 0,0,0]
+                # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
+                points_x = data_x[i, year_idx, :, *context_slice_indices]
+                points_y = data_y[i, year_idx, :, *context_slice_indices]
                 fig.add_trace(go.Scatter(
                     x=points_x,
                     y=points_y,
