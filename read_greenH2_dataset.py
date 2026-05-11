@@ -45,7 +45,7 @@ def create_boxplot(y_col):
     if y_col is None or df is None:
         return go.Figure()
     
-    clean_label = y_col.split(' ')[1:]
+    clean_label = ' '.join(y_col.split(' ')[1:])
 
     fig = px.box(
         df,
@@ -96,9 +96,9 @@ def update_all_data(n_clicks, filename):
     
     param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo, usagegrid = process_data(df)
     Nyear = len(year_dispo)
-    param_options = [{'label': p.split(' ')[-1], 'value': p} for p in param_dispo]
-    contexte_option = [{'label': c.split(' ')[-1], 'value': c} for c in contexte_dispo]
-    criteria_options = [{'label': cr.split(' ')[-1], 'value': cr} for cr in criteria_dispo]
+    param_options = [{'label': ' '.join(p.split(' ')[1:]), 'value': p} for p in param_dispo]
+    contexte_option = [{'label': ' '.join(c.split(' ')[1:]), 'value': c} for c in contexte_dispo]
+    criteria_options = [{'label': ' '.join(cr.split(' ')[1:]), 'value': cr} for cr in criteria_dispo]
 
     return html.Div([
         html.Div([
