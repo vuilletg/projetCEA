@@ -102,44 +102,45 @@ def update_all_data(n_clicks, filename):
 
     return html.Div([
         html.Div([
+            html.H2("Contexte"),
+            dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
+            dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
+            dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
+            dcc.Graph(id='cont_plot')
+        ], id='context-div', className= 'graph-div'),
+        html.Div([
             html.H2("Technique"),
             dcc.Dropdown(id='x-tech', options=param_options, value=param_dispo[0]),
             dcc.Dropdown(id='y-tech', options=param_options, value=param_dispo[1]),
             dcc.Dropdown(id='z-tech', options=param_options, value=param_dispo[2]),
             dcc.Slider(id='year-slider-tech', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             dcc.Graph(id='tech_plot')
-        ]),
-        html.Div([
-            html.H2("Contexte"),
-            dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
-            dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
-            dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
-            dcc.Graph(id='cont_plot')
-        ]),
+        ], id='thechnique-div', className= 'graph-div'),
         html.Div([
             html.H2("Critères"),
 
             dcc.RadioItems(
                 id='crit-plot-mode',
                 options=[
-                    {'label': ' Standard (Scatter)', 'value': 'std'},
-                    {'label': ' Boxplot (Distribution)', 'value': 'box'}
+                    {'label': ' Points', 'value': 'std'},
+                    {'label': ' Boxplot', 'value': 'box'}
                 ],
-                value='std',
-                labelStyle={'display': 'inline-block', 'marginRight': '20px', 'fontWeight': 'bold'}
+                value='std'
             ),
-            #### FIN ####
-
             dcc.Dropdown(id='x-crit', options=criteria_options, value=criteria_dispo[0]),
             dcc.Dropdown(id='y-crit', options=criteria_options, value=criteria_dispo[1]),
             dcc.Graph(id='crit_plot')
-        ])
-    ])
+        ], id='criteria-div', className= 'graph-div')
+    ], id = 'graphs-container')
 
 
 def create_fig(x_col, y_col, z_col=None, year_idx=0):
     if x_col is None or y_col is None or df is None:
         return go.Figure()
+
+    x_label = ' '.join(x_col.split(' ')[1:])
+    y_label = ' '.join(y_col.split(' ')[1:])
+
     
     # Calculer le produit des éléments de usagegrid
     product_usagegrid = 1
@@ -163,6 +164,13 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
             z_vals = [0] * Nsample_per_combination
             if z_col:
                 data_z = df[z_col].values.reshape(Ntech, len(year_dispo), Nsample_per_combination, *usagegrid)
+                z_label = ' '.join(z_col.split(' ')[1:])
+                fig.update_layout(
+                    scene=dict(
+                        xaxis_title=x_label,
+                        yaxis_title=y_label,
+                        zaxis_title=z_label
+                    ))
                 # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
                 z_vals = data_z[i, year_idx, :, *context_slice_indices]
                 fig.add_trace(go.Scatter3d(
@@ -174,6 +182,10 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
                     marker=dict(size=4)
                 ))
             else:
+                fig.update_layout(
+                    xaxis_title=x_label,
+                    yaxis_title=y_label
+                )
                 # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
                 points_x = data_x[i, year_idx, :, *context_slice_indices]
                 points_y = data_y[i, year_idx, :, *context_slice_indices]
