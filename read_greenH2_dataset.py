@@ -227,14 +227,18 @@ def update_t(x, y, z, yr):
 @app.callback(Output('cont_plot', 'figure'), [Input('x-cont', 'value'), Input('y-cont', 'value'), Input('year-slider-cont', 'value')])
 def update_co(x, y, yr): return create_fig(x, y, year_idx=yr)
 
+# UPDATE
+@app.callback(Output('x-crit', 'style'), Input('crit-plot-mode', 'value'))
+def toggle_x_dropdown(mode):
+    return {'display': 'none'} if mode == 'box' else {'display': 'block'}
+#------------------------------------
+
 @app.callback(Output('crit_plot', 'figure'), [Input('x-crit', 'value'), Input('y-crit', 'value'),
                                               Input('crit-plot-mode', 'value')
                                               ])
 #UPDATE
 def update_cr(x, y, mode): 
-    if mode == 'box':
-        return create_boxplot(y)
-    return create_fig(x, y)
+    return create_boxplot(y) if mode == 'box' else create_fig(x, y)
 
 if __name__ == '__main__':
     app.run(debug=True)
