@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px  # NOUVELLE: Utilise pour Boxplot 
+import plotly.express as px
 from dash import Dash, dcc, html, Input, Output, State
 import os
 
@@ -134,7 +134,7 @@ def update_all_data(n_clicks, filename):
     ], id = 'graphs-container')
 
 
-def create_fig(x_col, y_col, z_col=None, year_idx=0):
+def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
     if x_col is None or y_col is None or df is None:
         return go.Figure()
 
@@ -142,21 +142,15 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
     y_label = ' '.join(y_col.split(' ')[1:])
 
     
-    # Calculer le produit des éléments de usagegrid
     product_usagegrid = 1
     for val in usagegrid:
         product_usagegrid *= val
         
     fig = go.Figure()
     Ntech = len(techno_dispo)
-    # Nsample_per_combination est le nombre d'échantillons par combinaison de Technologie, Année et paramètres de Contexte
     Nsample_per_combination = len(df) // (Ntech * len(year_dispo) * product_usagegrid)
-    
-    # Créer un slice pour les paramètres de contexte afin de sélectionner la première valeur de chacun
-    context_slice_indices = (0,) * len(usagegrid)
 
     try:
-        # Remodeler les données pour inclure les dimensions pour la Technologie, l'Année, Nsample et chaque paramètre de Contexte
         data_x = df[x_col].values.reshape(Ntech, len(year_dispo), Nsample_per_combination, *usagegrid)
         data_y = df[y_col].values.reshape(Ntech, len(year_dispo), Nsample_per_combination, *usagegrid)
         
@@ -172,10 +166,10 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
                         zaxis_title=z_label
                     ))
                 # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
-                z_vals = data_z[i, year_idx, :, *context_slice_indices]
+                z_vals = data_z[i, year_idx, :, *args]
                 fig.add_trace(go.Scatter3d(
-                    x=data_x[i, year_idx, :, *context_slice_indices],
-                    y=data_y[i, year_idx, :, *context_slice_indices],
+                    x=data_x[i, year_idx, :, *args],
+                    y=data_y[i, year_idx, :, *args],
                     z=z_vals,
                     name=f"{tech}",
                     mode='markers',
@@ -186,9 +180,8 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
                     xaxis_title=x_label,
                     yaxis_title=y_label
                 )
-                # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
-                points_x = data_x[i, year_idx, :, *context_slice_indices]
-                points_y = data_y[i, year_idx, :, *context_slice_indices]
+                points_x = data_x[i, year_idx, :, *args]
+                points_y = data_y[i, year_idx, :, *args]
                 fig.add_trace(go.Scatter(
                     x=points_x,
                     y=points_y,
@@ -201,15 +194,41 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0):
         return go.Figure()
         
     return fig
+def create_fig_context(x_col, y_col, year_idx=0, *args):
+    if x_col is None or y_col is None or df is None:
+        return go.Figure()
 
+    x_label = ' '.join(x_col.split(' ')[1:])
+    y_label = ' '.join(y_col.split(' ')[1:])
+
+    fig = go.Figure()
+    
+    for tech in techno_dispo:
+        subset = df[(df['Technology'] == tech) & (df['Year'] == year_dispo[year_idx])]
+        fig.add_trace(go.Scatter(
+            x=subset[x_col],
+            y=subset[y_col],
+            name=f"{tech}",
+            mode='markers',
+            marker=dict(size=4)
+        ))
+
+    fig.update_layout(
+        xaxis_title=x_label,
+        yaxis_title=y_label
+    )
+    
+    return fig
 @app.callback(Output('tech_plot', 'figure'), [Input('x-tech', 'value'), Input('y-tech', 'value'), Input('z-tech', 'value'), Input('year-slider-tech', 'value')])
-def update_t(x, y, z, yr): return create_fig(x, y, z, yr)
+def update_t(x, y, z, yr): 
+    slice = [0] * len(usagegrid)
+    return create_fig(x, y, z, yr, *slice)
 
 @app.callback(Output('cont_plot', 'figure'), [Input('x-cont', 'value'), Input('y-cont', 'value'), Input('year-slider-cont', 'value')])
 def update_co(x, y, yr): return create_fig(x, y, year_idx=yr)
 
 @app.callback(Output('crit_plot', 'figure'), [Input('x-crit', 'value'), Input('y-crit', 'value'),
-                                              Input('crit-plot-mode', 'value') # Ajouter une nouvelle INPUT à partir "RADIO BUTTON"
+                                              Input('crit-plot-mode', 'value')
                                               ])
 #UPDATE
 def update_cr(x, y, mode): 
