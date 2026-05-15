@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from dash import Dash, dcc, html, Input, Output, State
+from dash import Dash, dcc, html, Input, Output, State, ALL
 import os
 
 df = None
@@ -103,19 +103,30 @@ def update_all_data(n_clicks, filename):
     return html.Div([
         html.Div([
             html.H2("Contexte"),
-            dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
-            dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
+            #dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
+            #dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
             dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
-            dcc.Graph(id='cont_plot')
+            html.Div(id='dynamic-sliders-container', children=[
+        html.Div([
+            html.Label(f"{' '.join(contexte_dispo[i].split(' ')[1:])} :"),
+            dcc.Slider(
+                id={'type': 'context-slider', 'index': str(df[contexte_dispo[i]].unique())},
+                min=0,
+                max=usagegrid[i] - 1,
+                value=0,
+                step=1,
+                marks={j: str(val) for j, val in enumerate(df[contexte_dispo[i]].unique())}),
+        ]) for i in range (len(contexte_dispo))
+    ]),
+            # dcc.Graph(id='cont_plot')
         ], id='context-div', className= 'graph-div'),
         html.Div([
             html.H2("Technique"),
             dcc.Dropdown(id='x-tech', options=param_options, value=param_dispo[0]),
             dcc.Dropdown(id='y-tech', options=param_options, value=param_dispo[1]),
             dcc.Dropdown(id='z-tech', options=param_options, value=param_dispo[2]),
-            dcc.Slider(id='year-slider-tech', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             dcc.Graph(id='tech_plot')
-        ], id='thechnique-div', className= 'graph-div'),
+        ], id='tech-div', className= 'graph-div'),
         html.Div([
             html.H2("Critères"),
 
@@ -165,7 +176,6 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
                         yaxis_title=y_label,
                         zaxis_title=z_label
                     ))
-                # Sélectionner Nsample_per_combination points pour la technologie, l'année et les premières valeurs des paramètres de contexte actuels
                 z_vals = data_z[i, year_idx, :, *args]
                 fig.add_trace(go.Scatter3d(
                     x=data_x[i, year_idx, :, *args],
@@ -219,22 +229,32 @@ def create_fig_context(x_col, y_col, year_idx=0, *args):
     )
     
     return fig
-@app.callback(Output('tech_plot', 'figure'), [Input('x-tech', 'value'), Input('y-tech', 'value'), Input('z-tech', 'value'), Input('year-slider-tech', 'value')])
+@app.callback(Output('tech_plot', 'figure'), [Input('x-tech', 'value'), Input('y-tech', 'value'), Input('z-tech', 'value'), Input('year-slider-cont', 'value')])
 def update_t(x, y, z, yr): 
-    slice = [0] * len(usagegrid)
+    slice = (0,) * len(usagegrid)
     return create_fig(x, y, z, yr, *slice)
 
-@app.callback(Output('cont_plot', 'figure'), [Input('x-cont', 'value'), Input('y-cont', 'value'), Input('year-slider-cont', 'value')])
-def update_co(x, y, yr): return create_fig(x, y, year_idx=yr)
+# @app.callback(
+#     Output('cont_plot', 'figure'),
+#     [Input('x-cont', 'value'),
+#      Input('y-cont', 'value'),
+#      Input('year-slider-cont', 'value'),
+#      Input({'type': 'context-slider', 'index': ALL}, 'value')] # Récupère une liste de valeurs
+# )
+# def update_co(x, y, yr, slider_values):
+#     return create_fig(x, y, None, yr, *slider_values)
 
-@app.callback(Output('crit_plot', 'figure'), [Input('x-crit', 'value'), Input('y-crit', 'value'),
-                                              Input('crit-plot-mode', 'value')
-                                              ])
-#UPDATE
-def update_cr(x, y, mode): 
+@app.callback(
+    Output('crit_plot', 'figure'), 
+    [Input('x-crit', 'value'), Input('y-crit', 'value'),
+     Input('crit-plot-mode', 'value'),
+     Input('year-slider-cont', 'value'),
+     Input({'type': 'context-slider', 'index': ALL}, 'value')]
+)             
+def update_cr(x, y, mode, yr, slider_values): 
     if mode == 'box':
         return create_boxplot(y)
-    return create_fig(x, y)
+    return create_fig(x, y, None, yr, *slider_values)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,7 +1,6 @@
 
 .graph-div {
-    height: 650px;
-    width: 45%;
+    height: 500px;
     background-color: white;
 }
 #graphs-container {
@@ -18,5 +17,8 @@
     margin-bottom: 20px;
 }
 #context-div{
-    width: 60%;
+    width: 100%;
+}
+#criteria-div, #tech-div{
+    width: 35%;
 }
