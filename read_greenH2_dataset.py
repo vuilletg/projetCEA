@@ -41,31 +41,25 @@ app.layout = html.Div([
 ])
 
 # CREATION BOXPLOT
-def create_boxplot(y_col):
-    if y_col is None or df is None:
-        return go.Figure()
+def create_boxplot(y_col, selected_year):
+    if y_col is None or df is None: return go.Figure()
     
+    df_filtered = df[df['Year'].astype(str) == str(selected_year)]
+
     clean_label = ' '.join(y_col.split(' ')[1:])
 
     fig = px.box(
-        df,
+        df_filtered,
         x = "Technology",
         y = y_col,
         color = "Technology",
-        facet_col = "Year",
+        # facet_col = "Year", # Supprimer
         points = "outliers",
-        title = f"Distribution de : {clean_label}",
-        labels={
-            "Technology": "Technologie",
-            "Year": "Année",
-            y_col: clean_label
-        },
+        title = f"Distribution de : {clean_label} ({selected_year})",
+        labels={"Technology": "Technologie", "Year": "Année", y_col: clean_label},
         template="plotly_white"
     )
-    fig.update_layout(transition_duration=300,
-                      margin = dict(l=40, r=40, t=80, b=40),
-                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                      )
+    fig.update_layout(transition_duration=300, margin = dict(l=40, r=40, t=80, b=40), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     return fig
 
 @app.callback(
@@ -140,6 +134,7 @@ def update_all_data(n_clicks, filename):
             ),
             dcc.Dropdown(id='x-crit', options=criteria_options, value=criteria_dispo[0]),
             dcc.Dropdown(id='y-crit', options=criteria_options, value=criteria_dispo[1]),
+            dcc.Slider( id='year-slider-crit', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             dcc.Graph(id='crit_plot')
         ], id='criteria-div', className= 'graph-div')
     ], id = 'graphs-container')
@@ -244,14 +239,14 @@ def update_t(x, y, z, yr):
 # def update_co(x, y, yr, slider_values):
 #     return create_fig(x, y, None, yr, *slider_values)
 
-@app.callback(
-    Output('crit_plot', 'figure'), 
-    [Input('x-crit', 'value'), Input('y-crit', 'value'),
-     Input('crit-plot-mode', 'value'),
-     Input('year-slider-cont', 'value'),
-     Input({'type': 'context-slider', 'index': ALL}, 'value')]
-)             
-def update_cr(x, y, mode, yr, slider_values): 
+@app.callback(Output('x-crit', 'style'), Input('crit-plot-mode', 'value'))
+def toggle_x_dropdown(mode):
+    return {'display': 'none'} if mode == 'box' else {'display': 'block'}
+
+@app.callback(Output('crit_plot', 'figure'), [Input('x-crit', 'value'), Input('y-crit', 'value'),Input('crit-plot-mode', 'value'), Input('year-slider-crit', 'value')])
+def update_cr(x, y, mode, yr): 
+    if df is None: return go.Figure()
+    selected_year = year_dispo[yr]
     if mode == 'box':
         return create_boxplot(y)
     return create_fig(x, y, None, yr, *slider_values)
