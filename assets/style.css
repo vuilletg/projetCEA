@@ -9,16 +9,16 @@
     justify-content: space-around;
 }
 #graphs-container div {
-    margin: 10px;
+    margin-bottom: 10px;
 }
 #crit-plot-mode{
     display: flex;
     justify-content: space-around;
-    margin-bottom: 20px;
+    margin:0 20px;
 }
 #context-div{
     width: 100%;
 }
 #criteria-div, #tech-div{
-    width: 35%;
+    width: 45%;
 }

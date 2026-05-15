@@ -99,18 +99,19 @@ def update_all_data(n_clicks, filename):
             html.H2("Contexte"),
             #dcc.Dropdown(id='x-cont', options=contexte_option, value=contexte_dispo[0]),
             #dcc.Dropdown(id='y-cont', options=contexte_option, value=contexte_dispo[1]),
+            html.Label("Année :"),
             dcc.Slider(id='year-slider-cont', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             html.Div(id='dynamic-sliders-container', children=[
-        html.Div([
-            html.Label(f"{' '.join(contexte_dispo[i].split(' ')[1:])} :"),
-            dcc.Slider(
-                id={'type': 'context-slider', 'index': str(df[contexte_dispo[i]].unique())},
-                min=0,
-                max=usagegrid[i] - 1,
-                value=0,
-                step=1,
-                marks={j: str(val) for j, val in enumerate(df[contexte_dispo[i]].unique())}),
-        ]) for i in range (len(contexte_dispo))
+            html.Div([
+                html.Label(f"{' '.join(contexte_dispo[i].split(' ')[1:])} :"),
+                dcc.Slider(
+                    id={'type': 'context-slider', 'index': str(df[contexte_dispo[i]].unique())},
+                    min=0,
+                    max=usagegrid[i] - 1,
+                    value=0,
+                    step=1,
+                    marks={j: str(val) for j, val in enumerate(df[contexte_dispo[i]].unique())}),
+            ]) for i in range (len(contexte_dispo))
     ]),
             # dcc.Graph(id='cont_plot')
         ], id='context-div', className= 'graph-div'),
@@ -134,7 +135,6 @@ def update_all_data(n_clicks, filename):
             ),
             dcc.Dropdown(id='x-crit', options=criteria_options, value=criteria_dispo[0]),
             dcc.Dropdown(id='y-crit', options=criteria_options, value=criteria_dispo[1]),
-            dcc.Slider( id='year-slider-crit', min=0, max=Nyear-1, value=0, marks={i: str(year_dispo[i]) for i in range(Nyear)}, step=None),
             dcc.Graph(id='crit_plot')
         ], id='criteria-div', className= 'graph-div')
     ], id = 'graphs-container')
@@ -239,16 +239,26 @@ def update_t(x, y, z, yr):
 # def update_co(x, y, yr, slider_values):
 #     return create_fig(x, y, None, yr, *slider_values)
 
-@app.callback(Output('x-crit', 'style'), Input('crit-plot-mode', 'value'))
+@app.callback(
+    Output('x-crit', 'style'), 
+    Input('crit-plot-mode', 'value')
+)
 def toggle_x_dropdown(mode):
     return {'display': 'none'} if mode == 'box' else {'display': 'block'}
 
-@app.callback(Output('crit_plot', 'figure'), [Input('x-crit', 'value'), Input('y-crit', 'value'),Input('crit-plot-mode', 'value'), Input('year-slider-crit', 'value')])
-def update_cr(x, y, mode, yr): 
+@app.callback(
+    Output('crit_plot', 'figure'), 
+    [Input('x-crit', 'value'), 
+     Input('y-crit', 'value'),
+     Input('crit-plot-mode', 'value'), 
+     Input('year-slider-cont', 'value'),
+     Input({'type': 'context-slider', 'index': ALL}, 'value')]
+)
+def update_cr(x, y, mode, yr, slider_values): 
     if df is None: return go.Figure()
     selected_year = year_dispo[yr]
     if mode == 'box':
-        return create_boxplot(y)
+        return create_boxplot(y, selected_year)
     return create_fig(x, y, None, yr, *slider_values)
 
 if __name__ == '__main__':
