@@ -22,6 +22,7 @@ def process_data(dataframe):
     return p_dispo, c_dispo, cr_dispo, y_dispo, t_dispo, usagegrid
 
 app = Dash(__name__)
+app.config.suppress_callback_exceptions = True
 
 app.layout = html.Div([
     html.H1("Visualisation des données Hydrogène", style={'textAlign': 'center'}),
@@ -41,10 +42,25 @@ app.layout = html.Div([
 ])
 
 # CREATION BOXPLOT
-def create_boxplot(y_col, selected_year):
+def create_boxplot(y_col, selected_year, slider_values = None):
     if y_col is None or df is None: return go.Figure()
     
-    df_filtered = df[df['Year'].astype(str) == str(selected_year)]
+    # Partition selon "Year"
+    mask = (df['Year'].astype(str) == str(selected_year))
+
+    # Partition selon "CONTEXT"
+    if slider_values and len(slider_values) == len(contexte_dispo):
+        for i, col_name in enumerate(contexte_dispo):
+            unique_vals = df[col_name].unique()
+            chosen_val = unique_vals[slider_values[i]]
+            mask = mask & (df[col_name] == chosen_val)
+
+    df_filtered = df[mask]
+
+    if df_filtered.empty:
+        fig = go.Figure()
+        fig.update_layout(title="Aucune donnée disponible pour ce contexte", template="plotly_white")
+        return fig
 
     clean_label = ' '.join(y_col.split(' ')[1:])
 
@@ -258,7 +274,7 @@ def update_cr(x, y, mode, yr, slider_values):
     if df is None: return go.Figure()
     selected_year = year_dispo[yr]
     if mode == 'box':
-        return create_boxplot(y, selected_year)
+        return create_boxplot(y, selected_year, slider_values)
     return create_fig(x, y, None, yr, *slider_values)
 
 if __name__ == '__main__':
