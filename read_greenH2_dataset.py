@@ -385,6 +385,20 @@ def update_all_data(n_clicks, filename):
                                                     ],
                                                     md=6,
                                                 ),
+                                                dbc.Col(
+                                                    [
+                                                        html.Label(
+                                                            "Axe Z :",
+                                                            className="fw-bold mb-1",
+                                                        ),
+                                                        dcc.Dropdown(
+                                                            id="z-crit",
+                                                            options=criteria_options,
+                                                            value= (criteria_dispo[2] if len(criteria_dispo) > 2 else None),
+                                                        ),
+                                                    ],
+                                                    md=6,
+                                                ),
                                             ],className="mb-3",
                                         ),
                                         dcc.Graph(id="crit_plot"),
@@ -475,7 +489,20 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
 )
 def update_t(x, y, z, yr):
     slice = (0,) * len(usagegrid)
-    return create_fig(x, y, z, yr, *slice)
+    if df is None:
+        return go.Figure()
+    sum = 1 if x is not None else 0
+    sum += 1 if y is not None else 0
+    sum += 1 if z is not None else 0
+    if sum == 1:
+        param = x if x is not None else (y if y is not None else z)
+        return create_boxplot(param, year_dispo[yr], slice)
+    elif sum == 2:
+        x = x if x is not None else (y)
+        y = y if y is not None else (z)
+        return create_fig(x, y, None, yr, *slice)
+    else:
+        return create_fig(x, y, z, yr, *slice)
 
 @app.callback(
     Output("x-crit-container", "style"), Input("crit-plot-mode", "value")
@@ -488,18 +515,28 @@ def toggle_x_dropdown(mode):
     [
         Input("x-crit", "value"),
         Input("y-crit", "value"),
+        Input("z-crit", "value"),
         Input("crit-plot-mode", "value"),
         Input("year-slider-cont", "value"),
         Input({"type": "context-slider", "index": ALL}, "value"),
     ],
 )
-def update_cr(x, y, mode, yr, slider_values):
+def update_cr(x, y, z, mode, yr, slider_values):
     if df is None:
         return go.Figure()
     selected_year = year_dispo[yr]
-    if mode == "box":
-        return create_boxplot(y, selected_year, slider_values)
-    return create_fig(x, y, None, yr, *slider_values)
+    sum = 1 if x is not None else 0
+    sum += 1 if y is not None else 0
+    sum += 1 if z is not None else 0
+    if mode == "box" or sum == 1:
+        param = x if x is not None else (y if y is not None else z)
+        return create_boxplot(param, selected_year, slider_values)
+    elif sum == 2:
+        x = x if x is not None else (y)
+        y = y if y is not None else (z)
+        return create_fig(x, y, None, yr, *slider_values)
+    else:
+        return create_fig(x, y, z, yr, *slider_values)
 
 if __name__ == "__main__":
     app.run(debug=True)
