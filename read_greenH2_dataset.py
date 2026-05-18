@@ -29,7 +29,7 @@ app.layout = dbc.Container(
         dbc.Row(
             dbc.Col(
                 html.H1(
-                    "Visualisation des données Hydrogène",
+                    "Visualisation des données",
                     className="text-center my-4 text-primary fw-bold",
                 ),
                 width=12,
@@ -71,7 +71,6 @@ app.layout = dbc.Container(
                             id="input-filename",
                             type="text",
                             value="ton_fichier.csv",
-                            className="form-control",
                         ),
                     ]
                 ),
@@ -91,6 +90,10 @@ app.layout = dbc.Container(
     ],
     fluid=True,
     className="p-0",
+    style={
+        "maxWidth": "100%",
+        "overflowX": "hidden",
+    }
 )
 
 @app.callback(
@@ -132,7 +135,7 @@ def create_boxplot(y_col, selected_year, slider_values=None):
         x="Technology",
         y=y_col,
         color="Technology",
-        points="outliers",
+        points="all",
         title=f"Distribution de : {clean_label} ({selected_year})",
         labels={
             "Technology": "Technologie",
@@ -180,12 +183,12 @@ def update_all_data(n_clicks, filename):
                     html.H3(
                         f"Erreur : Le fichier '{filename}' est introuvable."
                     )
-                ]
+                ], className="text-center alert alert-danger"
             )
 
     if df is None:
         return html.Div(
-            [html.H3("Cliquez sur 'Charger un fichier' pour commencer")]
+            [html.H3("Cliquez sur 'Charger un fichier' pour commencer")], className="text-center alert alert-primary"
         )
 
     param_dispo, contexte_dispo, criteria_dispo, year_dispo, techno_dispo, usagegrid = (
@@ -311,7 +314,7 @@ def update_all_data(n_clicks, filename):
                                         dcc.Dropdown(
                                             id="z-tech",
                                             options=param_options,
-                                            value=param_dispo[2],
+                                            value= (param_dispo[2] if len(param_dispo) > 2 else None),
                                             className="mb-3",
                                         ),
                                         dcc.Graph(id="tech_plot"),
@@ -368,8 +371,7 @@ def update_all_data(n_clicks, filename):
                                                     ],
                                                     md=6,
                                                     id="x-crit-container",
-                                                ),
-                                                dbc.Col(
+                                                ),dbc.Col(
                                                     [
                                                         html.Label(
                                                             "Axe Y :",
@@ -383,8 +385,7 @@ def update_all_data(n_clicks, filename):
                                                     ],
                                                     md=6,
                                                 ),
-                                            ],
-                                            className="mb-3",
+                                            ],className="mb-3",
                                         ),
                                         dcc.Graph(id="crit_plot"),
                                     ]
@@ -477,7 +478,7 @@ def update_t(x, y, z, yr):
     return create_fig(x, y, z, yr, *slice)
 
 @app.callback(
-    Output("x-crit", "style"), Input("crit-plot-mode", "value")
+    Output("x-crit-container", "style"), Input("crit-plot-mode", "value")
 )
 def toggle_x_dropdown(mode):
     return {"display": "none"} if mode == "box" else {"display": "block"}
