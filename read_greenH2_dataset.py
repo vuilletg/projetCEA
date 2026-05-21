@@ -5,6 +5,8 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from scipy.spatial import ConvexHull
+import numpy as np
 
 df = None
 Nsample = 0
@@ -306,29 +308,8 @@ def update_all_data(n_clicks, filename):
                                 ),
                                 dbc.CardBody(
                                     [
-                                        html.Div([
-                                            html.Label(
-                                                "Mode d'affichage :",
-                                                className="fw-bold mb-2 me-3",
-                                            ),
-                                        
-                                            dbc.RadioItems(
-                                                id="tech-plot-mode",
-                                                options=[
-                                                    {
-                                                        "label": " Boxplot",
-                                                        "value": "1",
-                                                    },
-                                                    {
-                                                        "label": " Violin",
-                                                        "value": "2",
-                                                    },
-                                                ],
-                                                value="1",
-                                                inline=True,
-                                                className="mb-3",
-                                            ),
-                                        ],id = "tech-plot-mode-container"
+                                        html.Div(
+                                        id = "tech-plot-mode-container"
                                         ),
                                         html.Label(
                                             "Axe X :", className="fw-bold mb-1"
@@ -376,28 +357,8 @@ def update_all_data(n_clicks, filename):
                                 dbc.CardBody(
                                     [
                                         html.Div(
-                                        [
-                                            html.Label(
-                                                "Mode d'affichage :",
-                                                className="fw-bold mb-2 me-3",
-                                            ),
-                                            dbc.RadioItems(
-                                                id="crit-plot-mode",
-                                                options=[
-                                                    {
-                                                        "label": " boxplot",
-                                                        "value": "1",
-                                                    },
-                                                    {
-                                                        "label": " Violin",
-                                                        "value": "2",
-                                                    }
-                                                ],
-                                                value="1",
-                                                inline=True,
-                                                className="mb-3",
-                                            ),
-                                        ],id = "crit-plot-mode-container"
+                                
+                                        id = "crit-plot-mode-container"
                                         ),
                                         dbc.Row(
                                             [
@@ -494,36 +455,60 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                     )
                 )
                 z_vals = data_z[i, year_idx, :, *args]
-                fig.add_trace(
-                    go.Scatter3d(
-                        x=data_x[i, year_idx, :, *args],
-                        y=data_y[i, year_idx, :, *args],
-                        z=z_vals,
-                        name=f"{tech}",
-                        mode="markers",
-                        marker=dict(size=4),
+                if mode == "2":
+                    fig.add_trace(
+                        go.Mesh3d(
+                            x=data_x[i, year_idx, :, *args],
+                            y=data_y[i, year_idx, :, *args],
+                            z=z_vals,
+                            name=f"{tech}",
+                            opacity=0.5,
+                            alphahull=4,
+                            flatshading=False
+                        )
+                    )
+                else:
+                    fig.add_trace(
+                        go.Scatter3d(
+                            x=data_x[i, year_idx, :, *args],
+                            y=data_y[i, year_idx, :, *args],
+                            z=z_vals,
+                            name=f"{tech}",
+                            mode="markers",
+                            marker=dict(size=4),
                         )
                     )
             else:
                 fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
                 points_x = data_x[i, year_idx, :, *args]
                 points_y = data_y[i, year_idx, :, *args]
-                fig.add_trace(
-                    go.Scatter(
-                        x=points_x,
-                        y=points_y,
-                        name=f"{tech}",
-                    mode="markers",
-                    marker=dict(size=4),
+                if mode == "2":
+                    fig.add_trace(
+                        go.Scatter(
+                            x=points_x,
+                            y=points_y,
+                            name=f"{tech}",
+                            fill="toself",
+                            mode="none"
+                        )
                     )
-                )
+                else:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=points_x,
+                            y=points_y,
+                            name=f"{tech}",
+                            mode="markers",
+                            marker=dict(size=4),
+                        )
+                    )
     except Exception as e:
         print(f"Erreur de Reshape : {e}")
         return go.Figure()
     return fig
 
 @app.callback(
-    Output("tech-plot-mode-container", "style"),[
+    Output("tech-plot-mode-container", "children"),[
     Input("x-tech", "value"),
     Input("y-tech", "value"),
     Input("z-tech", "value"),
@@ -531,13 +516,34 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
 )
 def update_tech_plot_mode_container(x, y, z):
     axes_count = sum(1 for axis in [x, y, z] if axis is not None)
-    if axes_count == 1:
-        return {"display": "block"}
-    else:
-        return {"display": "none"}
+    return html.Div(
+        [
+        html.Label(
+            "Mode d'affichage :",
+            className="fw-bold mb-2 me-3",
+        ),
+        dbc.RadioItems(
+            id="tech-plot-mode",
+            options=[
+                {"label": " Boxplot", "value": "1"},
+                {"label": " Violin", "value": "2"}
+            ] if axes_count == 1 else [
+                {"label": " points", "value": "1"},
+                {"label": " surface", "value": "2"}
+            ] if axes_count == 2 else[
+                {"label": " points", "value": "1"},
+                {"label": " surface", "value": "2"}
+            ],
+            value="1",
+            inline=True,
+            className="mb-3",
+        ),
+        ]
+    )
+
 
 @app.callback(
-    Output("crit-plot-mode-container", "style"),
+    Output("crit-plot-mode-container", "children"),
     [
         Input("x-crit", "value"),
         Input("y-crit", "value"),
@@ -546,10 +552,29 @@ def update_tech_plot_mode_container(x, y, z):
 )
 def update_crit_plot_mode_container(x, y, z):
     axes_count = sum(1 for axis in [x, y, z] if axis is not None)
-    if axes_count == 1:
-        return {"display": "block"}
-    else:
-        return {"display": "none"}
+    return html.Div([
+     html.Label(
+            "Mode d'affichage :",
+            className="fw-bold mb-2 me-3",
+        ),
+        dbc.RadioItems(
+            id="crit-plot-mode",
+            options=[
+                {"label": " boxplot", "value": "1"},
+                {"label": " Violin", "value": "2"}
+            ] if axes_count == 1 else [
+                {"label": " points 2d", "value": "1"},
+            ] if axes_count == 2 else[
+                {"label": " points 3d", "value": "1"},
+                {"label": " surface 3d ", "value": "2"}
+            ],
+            value="1",
+            inline=True,
+            className="mb-3",
+        ),
+    ]
+    )
+
 @app.callback(
     Output("tech_plot", "figure"),
     [
