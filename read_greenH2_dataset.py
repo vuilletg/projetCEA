@@ -1,4 +1,5 @@
 import os
+from turtle import mode
 from dash import ALL, Dash, Input, Output, State, dcc, html
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -106,7 +107,7 @@ def toggle_modal(n_open, n_close, is_open):
         return not is_open
     return is_open
 
-def create_boxplot(y_col, selected_year, slider_values=None):
+def create_boxplot(y_col, mode, selected_year, slider_values=None):
     if y_col is None or df is None:
         return go.Figure()
 
@@ -129,21 +130,36 @@ def create_boxplot(y_col, selected_year, slider_values=None):
         return fig
 
     clean_label = " ".join(y_col.split(" ")[1:])
-
-    fig = px.box(
-        df_filtered,
-        x="Technology",
-        y=y_col,
-        color="Technology",
-        points="all",
-        title=f"Distribution de : {clean_label} ({selected_year})",
-        labels={
-            "Technology": "Technologie",
-            "Year": "Année",
-            y_col: clean_label,
-        },
-        template="plotly_white",
-    )
+    if mode == "2":
+        fig = px.violin(
+            df_filtered,
+            x="Technology",
+            y=y_col,
+            color="Technology",
+            points="all",
+            title=f"Distribution de : {clean_label} ({selected_year})",
+            labels={  
+                "Technology": "Technologie",
+                "Year": "Année",
+                y_col: clean_label,
+            },
+            template="plotly_white",
+        )
+    else:
+        fig = px.box(
+            df_filtered,
+            x="Technology",
+            y=y_col,
+            color="Technology",
+            points="all",
+            title=f"Distribution de : {clean_label} ({selected_year})",
+            labels={
+                "Technology": "Technologie",
+                "Year": "Année",
+                y_col: clean_label,
+            },
+            template="plotly_white",
+        )
     fig.update_layout(
         transition_duration=300,
         margin=dict(l=40, r=40, t=80, b=40),
@@ -290,6 +306,30 @@ def update_all_data(n_clicks, filename):
                                 ),
                                 dbc.CardBody(
                                     [
+                                        html.Div([
+                                            html.Label(
+                                                "Mode d'affichage :",
+                                                className="fw-bold mb-2 me-3",
+                                            ),
+                                        
+                                            dbc.RadioItems(
+                                                id="tech-plot-mode",
+                                                options=[
+                                                    {
+                                                        "label": " Boxplot",
+                                                        "value": "1",
+                                                    },
+                                                    {
+                                                        "label": " Violin",
+                                                        "value": "2",
+                                                    },
+                                                ],
+                                                value="1",
+                                                inline=True,
+                                                className="mb-3",
+                                            ),
+                                        ],id = "tech-plot-mode-container"
+                                        ),
                                         html.Label(
                                             "Axe X :", className="fw-bold mb-1"
                                         ),
@@ -335,25 +375,29 @@ def update_all_data(n_clicks, filename):
                                 ),
                                 dbc.CardBody(
                                     [
-                                        html.Label(
-                                            "Mode d'affichage :",
-                                            className="fw-bold mb-2 me-3",
-                                        ),
-                                        dbc.RadioItems(
-                                            id="crit-plot-mode",
-                                            options=[
-                                                {
-                                                    "label": " Points",
-                                                    "value": "std",
-                                                },
-                                                {
-                                                    "label": " Boxplot",
-                                                    "value": "box",
-                                                },
-                                            ],
-                                            value="std",
-                                            inline=True,
-                                            className="mb-3",
+                                        html.Div(
+                                        [
+                                            html.Label(
+                                                "Mode d'affichage :",
+                                                className="fw-bold mb-2 me-3",
+                                            ),
+                                            dbc.RadioItems(
+                                                id="crit-plot-mode",
+                                                options=[
+                                                    {
+                                                        "label": " boxplot",
+                                                        "value": "1",
+                                                    },
+                                                    {
+                                                        "label": " Violin",
+                                                        "value": "2",
+                                                    }
+                                                ],
+                                                value="1",
+                                                inline=True,
+                                                className="mb-3",
+                                            ),
+                                        ],id = "crit-plot-mode-container"
                                         ),
                                         dbc.Row(
                                             [
@@ -415,7 +459,7 @@ def update_all_data(n_clicks, filename):
         ]
     )
 
-def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
+def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
     if x_col is None or y_col is None or df is None:
         return go.Figure()
     x_label = " ".join(x_col.split(" ")[1:])
@@ -458,8 +502,8 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
                         name=f"{tech}",
                         mode="markers",
                         marker=dict(size=4),
+                        )
                     )
-                )
             else:
                 fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
                 points_x = data_x[i, year_idx, :, *args]
@@ -469,8 +513,8 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
                         x=points_x,
                         y=points_y,
                         name=f"{tech}",
-                        mode="markers",
-                        marker=dict(size=4),
+                    mode="markers",
+                    marker=dict(size=4),
                     )
                 )
     except Exception as e:
@@ -479,15 +523,44 @@ def create_fig(x_col, y_col, z_col=None, year_idx=0, *args):
     return fig
 
 @app.callback(
+    Output("tech-plot-mode-container", "style"),[
+    Input("x-tech", "value"),
+    Input("y-tech", "value"),
+    Input("z-tech", "value"),
+]
+)
+def update_tech_plot_mode_container(x, y, z):
+    axes_count = sum(1 for axis in [x, y, z] if axis is not None)
+    if axes_count == 1:
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+
+@app.callback(
+    Output("crit-plot-mode-container", "style"),
+    [
+        Input("x-crit", "value"),
+        Input("y-crit", "value"),
+        Input("z-crit", "value"),
+    ],
+)
+def update_crit_plot_mode_container(x, y, z):
+    axes_count = sum(1 for axis in [x, y, z] if axis is not None)
+    if axes_count == 1:
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+@app.callback(
     Output("tech_plot", "figure"),
     [
         Input("x-tech", "value"),
         Input("y-tech", "value"),
         Input("z-tech", "value"),
+        Input("tech-plot-mode", "value"),
         Input("year-slider-cont", "value"),
     ],
 )
-def update_t(x, y, z, yr):
+def update_t(x, y, z, mode, yr):
     slice = (0,) * len(usagegrid)
     if df is None:
         return go.Figure()
@@ -496,19 +569,13 @@ def update_t(x, y, z, yr):
     sum += 1 if z is not None else 0
     if sum == 1:
         param = x if x is not None else (y if y is not None else z)
-        return create_boxplot(param, year_dispo[yr], slice)
+        return create_boxplot(param,mode, year_dispo[yr], slice)
     elif sum == 2:
         x = x if x is not None else (y)
         y = y if y is not None else (z)
-        return create_fig(x, y, None, yr, *slice)
+        return create_fig(x, y, None, mode, yr, *slice)
     else:
-        return create_fig(x, y, z, yr, *slice)
-
-@app.callback(
-    Output("x-crit-container", "style"), Input("crit-plot-mode", "value")
-)
-def toggle_x_dropdown(mode):
-    return {"display": "none"} if mode == "box" else {"display": "block"}
+        return create_fig(x, y, z, mode, yr, *slice)
 
 @app.callback(
     Output("crit_plot", "figure"),
@@ -528,15 +595,15 @@ def update_cr(x, y, z, mode, yr, slider_values):
     sum = 1 if x is not None else 0
     sum += 1 if y is not None else 0
     sum += 1 if z is not None else 0
-    if mode == "box" or sum == 1:
+    if sum == 1:
         param = x if x is not None else (y if y is not None else z)
-        return create_boxplot(param, selected_year, slider_values)
+        return create_boxplot(param,mode, selected_year, slider_values)
     elif sum == 2:
         x = x if x is not None else (y)
         y = y if y is not None else (z)
-        return create_fig(x, y, None, yr, *slider_values)
+        return create_fig(x, y, None, mode, yr, *slider_values)
     else:
-        return create_fig(x, y, z, yr, *slider_values)
+        return create_fig(x, y, z, mode, yr, *slider_values)
 
 if __name__ == "__main__":
     app.run(debug=True)
