@@ -482,17 +482,43 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                 fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
                 points_x = data_x[i, year_idx, :, *args]
                 points_y = data_y[i, year_idx, :, *args]
-                if mode == "2":
+                if mode == "3":
+                    default_colors = px.colors.qualitative.Plotly
+                    color_hex = default_colors[i % len(default_colors)]
+                    rgb_color = px.colors.hex_to_rgb(color_hex) # Renvoie un tuple (R, G, B)
+                    r, g, b = rgb_color
+                    custom_colorscale = [
+                        [0.0, f"rgba({r}, {g}, {b}, 0.0)"],
+                        [0.2, f"rgba({r}, {g}, {b}, 0.3)"],
+                        [0.6, f"rgba({r}, {g}, {b}, 0.7)"], 
+                        [1.0, f"rgba({r}, {g}, {b}, 1)"]   
+                    ]
+                    fig.add_trace(
+                        go.Histogram2dContour(
+                            x=points_x,
+                            y=points_y,
+                            name=f"{tech}",
+                            contours=dict(
+                                coloring='heatmap',
+                                showlines=False
+                            ),
+                            line=dict(width=0.1),
+                            ncontours=40,
+                            colorscale=custom_colorscale,
+                            showscale=False
+                        )
+                    )
+                elif mode == "2":
                     points = np.column_stack((points_x, points_y))
-                    hull = alphashape.alphashape(points, 0.2)
+                    hull = alphashape.alphashape(points, 0)
                     hull_x, hull_y = hull.exterior.xy
                     fig.add_trace(
                         go.Scatter(
                             x=list(hull_x),
                             y=list(hull_y),
                             name=f"{tech}",
-                            fill="toself",
-                            mode="none"
+                            mode="none",
+                            fill="toself"
                         )
                     )
                 else:
@@ -567,7 +593,8 @@ def update_crit_plot_mode_container(x, y, z):
                 {"label": " Violin", "value": "2"}
             ] if axes_count == 1 else [
                 {"label": " points 2d", "value": "1"},
-                {"label": " surface 2d ", "value": "2"}
+                {"label": " surface 2d ", "value": "2"},
+                {"label": " densitée 2d", "value": "3"}
             ] if axes_count == 2 else[
                 {"label": " points 3d", "value": "1"},
                 {"label": " surface 3d ", "value": "2"}
