@@ -502,8 +502,8 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                                 coloring='heatmap',
                                 showlines=False
                             ),
-                            line=dict(width=0.1),
-                            ncontours=40,
+                            line=dict(width=0),
+                            ncontours=4000,
                             colorscale=custom_colorscale,
                             showscale=False
                         )
@@ -558,7 +558,8 @@ def update_tech_plot_mode_container(x, y, z):
                 {"label": " Violin", "value": "2"}
             ] if axes_count == 1 else [
                 {"label": " points 2d", "value": "1"},
-                {"label": " surface 2d", "value": "2"}
+                {"label": " surface 2d", "value": "2"},
+                {"label": " densitée 2d", "value": "3"}
             ] if axes_count == 2 else[
                 {"label": " points 3d", "value": "1"},
                 {"label": " surface 3d", "value": "2"}
