@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from scipy.spatial import ConvexHull
+import alphashape
 import numpy as np
 
 df = None
@@ -483,10 +483,13 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                 points_x = data_x[i, year_idx, :, *args]
                 points_y = data_y[i, year_idx, :, *args]
                 if mode == "2":
+                    points = np.column_stack((points_x, points_y))
+                    hull = alphashape.alphashape(points, 0.2)
+                    hull_x, hull_y = hull.exterior.xy
                     fig.add_trace(
                         go.Scatter(
-                            x=points_x,
-                            y=points_y,
+                            x=list(hull_x),
+                            y=list(hull_y),
                             name=f"{tech}",
                             fill="toself",
                             mode="none"
@@ -528,11 +531,11 @@ def update_tech_plot_mode_container(x, y, z):
                 {"label": " Boxplot", "value": "1"},
                 {"label": " Violin", "value": "2"}
             ] if axes_count == 1 else [
-                {"label": " points", "value": "1"},
-                {"label": " surface", "value": "2"}
+                {"label": " points 2d", "value": "1"},
+                {"label": " surface 2d", "value": "2"}
             ] if axes_count == 2 else[
-                {"label": " points", "value": "1"},
-                {"label": " surface", "value": "2"}
+                {"label": " points 3d", "value": "1"},
+                {"label": " surface 3d", "value": "2"}
             ],
             value="1",
             inline=True,
@@ -564,6 +567,7 @@ def update_crit_plot_mode_container(x, y, z):
                 {"label": " Violin", "value": "2"}
             ] if axes_count == 1 else [
                 {"label": " points 2d", "value": "1"},
+                {"label": " surface 2d ", "value": "2"}
             ] if axes_count == 2 else[
                 {"label": " points 3d", "value": "1"},
                 {"label": " surface 3d ", "value": "2"}
