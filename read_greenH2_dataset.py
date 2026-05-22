@@ -1,5 +1,5 @@
 import os
-from turtle import mode
+# from turtle import mode
 from dash import ALL, Dash, Input, Output, State, dcc, html
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -113,15 +113,25 @@ def create_boxplot(y_col, mode, selected_year, slider_values=None):
     if y_col is None or df is None:
         return go.Figure()
 
-    mask = df["Year"].astype(str) == str(selected_year)
+    df_year = df[df["Year"].astype(str) == str(selected_year)]
+    if df_year.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Aucune donnée disponible pour ce contexte",
+            template="plotly_white",
+        )
+        return fig
 
     if slider_values and len(slider_values) == len(contexte_dispo):
+        query_mask = pd.Series(True, index=df_year.index)
         for i, col_name in enumerate(contexte_dispo):
             unique_vals = df[col_name].unique()
             chosen_val = unique_vals[slider_values[i]]
-            mask = mask & (df[col_name] == chosen_val)
+            query_mask = query_mask & (df_year[col_name] == chosen_val)
 
-    df_filtered = df[mask]
+        df_filtered = df_year[query_mask]
+    else:
+        df_filtered = df_year
 
     if df_filtered.empty:
         fig = go.Figure()
