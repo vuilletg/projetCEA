@@ -1,5 +1,5 @@
 import os
-# from turtle import mode
+from turtle import mode
 from dash import ALL, Dash, Input, Output, State, dcc, html
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -113,25 +113,15 @@ def create_boxplot(y_col, mode, selected_year, slider_values=None):
     if y_col is None or df is None:
         return go.Figure()
 
-    df_year = df[df["Year"].astype(str) == str(selected_year)]
-    if df_year.empty:
-        fig = go.Figure()
-        fig.update_layout(
-            title="Aucune donnée disponible pour ce contexte",
-            template="plotly_white",
-        )
-        return fig
+    mask = df["Year"].astype(str) == str(selected_year)
 
     if slider_values and len(slider_values) == len(contexte_dispo):
-        query_mask = pd.Series(True, index=df_year.index)
         for i, col_name in enumerate(contexte_dispo):
             unique_vals = df[col_name].unique()
             chosen_val = unique_vals[slider_values[i]]
-            query_mask = query_mask & (df_year[col_name] == chosen_val)
+            mask = mask & (df[col_name] == chosen_val)
 
-        df_filtered = df_year[query_mask]
-    else:
-        df_filtered = df_year
+    df_filtered = df[mask]
 
     if df_filtered.empty:
         fig = go.Figure()
@@ -631,18 +621,14 @@ def update_t(x, y, z, mode, yr):
     slice = (0,) * len(usagegrid)
     if df is None:
         return go.Figure()
-    sum = 1 if x is not None else 0
-    sum += 1 if y is not None else 0
-    sum += 1 if z is not None else 0
-    if sum == 1:
-        param = x if x is not None else (y if y is not None else z)
-        return create_boxplot(param,mode, year_dispo[yr], slice)
-    elif sum == 2:
-        x = x if x is not None else (y)
-        y = y if y is not None else (z)
-        return create_fig(x, y, None, mode, yr, *slice)
+    active_axes = [axis for axis in [x, y, z] if axis is not None]
+    axes_count = len(active_axes)
+    if axes_count == 1:
+        return create_boxplot(active_axes[0],mode, year_dispo[yr], slice)
+    elif axes_count == 2:
+        return create_fig(active_axes[0], active_axes[1], None, mode, yr, *slice)
     else:
-        return create_fig(x, y, z, mode, yr, *slice)
+        return create_fig(active_axes[0], active_axes[1], active_axes[2], mode, yr, *slice)
 
 @app.callback(
     Output("crit_plot", "figure"),
@@ -659,18 +645,15 @@ def update_cr(x, y, z, mode, yr, slider_values):
     if df is None:
         return go.Figure()
     selected_year = year_dispo[yr]
-    sum = 1 if x is not None else 0
-    sum += 1 if y is not None else 0
-    sum += 1 if z is not None else 0
-    if sum == 1:
-        param = x if x is not None else (y if y is not None else z)
-        return create_boxplot(param,mode, selected_year, slider_values)
-    elif sum == 2:
-        x = x if x is not None else (y)
-        y = y if y is not None else (z)
-        return create_fig(x, y, None, mode, yr, *slider_values)
+    
+    active_axes = [axis for axis in [x, y, z] if axis is not None]
+    axes_count = len(active_axes)
+    if axes_count == 1:
+        return create_boxplot(active_axes[0], mode, selected_year, slider_values)
+    elif axes_count == 2:
+        return create_fig(active_axes[0], active_axes[1], None, mode, yr, *slider_values)
     else:
-        return create_fig(x, y, z, mode, yr, *slider_values)
+        return create_fig(active_axes[0], active_axes[1], active_axes[2], mode, yr, *slider_values)
 
 if __name__ == "__main__":
     app.run(debug=True)
