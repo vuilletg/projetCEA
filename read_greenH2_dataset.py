@@ -224,195 +224,194 @@ def update_all_data(n_clicks, filename):
     return html.Div(
         [
             dbc.Row(
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardHeader(
-                                "Contexte",
-                                className="bg-primary text-white fw-bold fs-5",
-                            ),
-                            dbc.CardBody(
-                                [
-                                    html.Label(
-                                        "Année :", className="fw-bold mb-1"
-                                    ),
-                                    dcc.Slider(
-                                        id="year-slider-cont",
-                                        min=0,
-                                        max=Nyear - 1,
-                                        value=0,
-                                        marks={
-                                            i: str(year_dispo[i])
-                                            for i in range(Nyear)
-                                        },
-                                        step=None,
-                                        className="mb-4",
-                                    ),
-                                    html.Div(
-                                        id="dynamic-sliders-container",
-                                        children=[
-                                            html.Div(
-                                                [
-                                                    html.Label(
-                                                        f"{' '.join(contexte_dispo[i].split(' ')[1:])} :",
-                                                        className="fw-bold mt-2",
-                                                    ),
-                                                    dcc.Slider(
-                                                        id={
-                                                            "type": "context-slider",
-                                                            "index": str(
-                                                                df[
-                                                                    contexte_dispo[
-                                                                        i
-                                                                    ]
-                                                                ].unique()
-                                                            ),
-                                                        },
-                                                        min=0,
-                                                        max=usagegrid[i] - 1,
-                                                        value=0,
-                                                        step=1,
-                                                        marks={
-                                                            j: str(val)
-                                                            for j, val in enumerate(
-                                                                df[
-                                                                    contexte_dispo[
-                                                                        i
-                                                                    ]
-                                                                ].unique()
-                                                            )
-                                                        },
-                                                    ),
-                                                ]
-                                            )
-                                            for i in range(len(contexte_dispo))
-                                        ],
-                                    ),
-                                ]
-                            ),
-                        ],
-                        className="shadow-sm",
-                    ),
-                    width=12,
-                    className="mb-4",
-                )
-            ),
-            dbc.Row(
                 [
+                    # --- PREMIÈRE COLONNE : CONTEXTE ---
                     dbc.Col(
                         dbc.Card(
                             [
                                 dbc.CardHeader(
-                                    "Technique",
-                                    className="bg-success text-white fw-bold fs-5",
+                                    "Contexte",
+                                    className="bg-primary text-white fw-bold fs-5",
                                 ),
                                 dbc.CardBody(
                                     [
+                                        html.Label(
+                                            "Année :", className="fw-bold mb-1"
+                                        ),
+                                        dcc.Slider(
+                                            id="year-slider-cont",
+                                            min=0,
+                                            max=Nyear - 1,
+                                            value=0,
+                                            marks={
+                                                i: str(year_dispo[i])
+                                                for i in range(Nyear)
+                                            },
+                                            step=None,
+                                            className="mb-4",
+                                        ),
                                         html.Div(
-                                        id = "tech-plot-mode-container"
+                                            id="dynamic-sliders-container",
+                                            children=[
+                                                html.Div(
+                                                    [
+                                                        html.Label(
+                                                            f"{' '.join(contexte_dispo[i].split(' ')[1:])} :",
+                                                            className="fw-bold mt-2",
+                                                        ),
+                                                        dcc.Slider(
+                                                            id={
+                                                                "type": "context-slider",
+                                                                "index": str(
+                                                                    df[
+                                                                        contexte_dispo[
+                                                                            i
+                                                                        ]
+                                                                    ].unique()
+                                                                ),
+                                                            },
+                                                            min=0,
+                                                            max=usagegrid[i] - 1,
+                                                            value=0,
+                                                            step=1,
+                                                            marks={
+                                                                j: str(val)
+                                                                for j, val in enumerate(
+                                                                    df[
+                                                                        contexte_dispo[
+                                                                            i
+                                                                        ]
+                                                                    ].unique()
+                                                                )
+                                                            },
+                                                        ),
+                                                    ]
+                                                )
+                                                for i in range(len(contexte_dispo))
+                                            ],
                                         ),
-                                        html.Label(
-                                            "Axe X :", className="fw-bold mb-1"
-                                        ),
-                                        dcc.Dropdown(
-                                            id="x-tech",
-                                            options=param_options,
-                                            value=param_dispo[0],
-                                            className="mb-2",
-                                        ),
-                                        html.Label(
-                                            "Axe Y :", className="fw-bold mb-1"
-                                        ),
-                                        dcc.Dropdown(
-                                            id="y-tech",
-                                            options=param_options,
-                                            value=param_dispo[1],
-                                            className="mb-2",
-                                        ),
-                                        html.Label(
-                                            "Axe Z :", className="fw-bold mb-1"
-                                        ),
-                                        dcc.Dropdown(
-                                            id="z-tech",
-                                            options=param_options,
-                                            value= (param_dispo[2] if len(param_dispo) > 2 else None),
-                                            className="mb-3",
-                                        ),
-                                        dcc.Graph(id="tech_plot"),
                                     ]
                                 ),
                             ],
-                            className="shadow-sm h-100",
+                            className="shadow-sm h-100", # h-100 pour occuper toute la hauteur disponible
                         ),
-                        md=6, 
+                        md=4, # Largeur de la colonne Contexte (4/12)
                         className="mb-4",
                     ),
+                    
+                    # --- DEUXIÈME COLONNE : TECHNIQUE & CRITÈRES (Superposés) ---
                     dbc.Col(
-                        dbc.Card(
-                            [
-                                dbc.CardHeader(
-                                    "Critères",
-                                    className="bg-info text-white fw-bold fs-5",
-                                ),
-                                dbc.CardBody(
-                                    [
-                                        html.Div(
-                                
-                                        id = "crit-plot-mode-container"
-                                        ),
-                                        dbc.Row(
-                                            [
-                                                dbc.Col(
-                                                    [
-                                                        html.Label(
-                                                            "Axe X :",
-                                                            className="fw-bold mb-1",
-                                                        ),
-                                                        dcc.Dropdown(
-                                                            id="x-crit",
-                                                            options=criteria_options,
-                                                            value=criteria_dispo[0],
-                                                        ),
-                                                    ],
-                                                    md=6,
-                                                    id="x-crit-container",
-                                                ),dbc.Col(
-                                                    [
-                                                        html.Label(
-                                                            "Axe Y :",
-                                                            className="fw-bold mb-1",
-                                                        ),
-                                                        dcc.Dropdown(
-                                                            id="y-crit",
-                                                            options=criteria_options,
-                                                            value=criteria_dispo[1],
-                                                        ),
-                                                    ],
-                                                    md=6,
-                                                ),
-                                                dbc.Col(
-                                                    [
-                                                        html.Label(
-                                                            "Axe Z :",
-                                                            className="fw-bold mb-1",
-                                                        ),
-                                                        dcc.Dropdown(
-                                                            id="z-crit",
-                                                            options=criteria_options,
-                                                            value= (criteria_dispo[2] if len(criteria_dispo) > 2 else None),
-                                                        ),
-                                                    ],
-                                                    md=6,
-                                                ),
-                                            ],className="mb-3",
-                                        ),
-                                        dcc.Graph(id="crit_plot"),
-                                    ]
-                                ),
-                            ],
-                            className="shadow-sm h-100",
-                        ),
-                        md=6,
+                        [
+                            # Bloc Technique
+                            dbc.Card(
+                                [
+                                    dbc.CardHeader(
+                                        "Technique",
+                                        className="bg-success text-white fw-bold fs-5",
+                                    ),
+                                    dbc.CardBody(
+                                        [
+                                            html.Div(id="tech-plot-mode-container"),
+                                            html.Label(
+                                                "Axe X :", className="fw-bold mb-1"
+                                            ),
+                                            dcc.Dropdown(
+                                                id="x-tech",
+                                                options=param_options,
+                                                value=param_dispo[0],
+                                                className="mb-2",
+                                            ),
+                                            html.Label(
+                                                "Axe Y :", className="fw-bold mb-1"
+                                            ),
+                                            dcc.Dropdown(
+                                                id="y-tech",
+                                                options=param_options,
+                                                value=param_dispo[1],
+                                                className="mb-2",
+                                            ),
+                                            html.Label(
+                                                "Axe Z :", className="fw-bold mb-1"
+                                            ),
+                                            dcc.Dropdown(
+                                                id="z-tech",
+                                                options=param_options,
+                                                value=(param_dispo[2] if len(param_dispo) > 2 else None),
+                                                className="mb-3",
+                                            ),
+                                            dcc.Graph(id="tech_plot"),
+                                        ]
+                                    ),
+                                ],
+                                className="shadow-sm mb-4", # Marge en bas pour séparer du bloc suivant
+                            ),
+                            
+                            # Bloc Critères
+                            dbc.Card(
+                                [
+                                    dbc.CardHeader(
+                                        "Critères",
+                                        className="bg-info text-white fw-bold fs-5",
+                                    ),
+                                    dbc.CardBody(
+                                        [
+                                            html.Div(id="crit-plot-mode-container"),
+                                            dbc.Row(
+                                                [
+                                                    dbc.Col(
+                                                        [
+                                                            html.Label(
+                                                                "Axe X :",
+                                                                className="fw-bold mb-1",
+                                                            ),
+                                                            dcc.Dropdown(
+                                                                id="x-crit",
+                                                                options=criteria_options,
+                                                                value=criteria_dispo[0],
+                                                            ),
+                                                        ],
+                                                        md=4, # Adapté en md=4 car l'espace horizontal est plus restreint
+                                                        id="x-crit-container",
+                                                    ),
+                                                    dbc.Col(
+                                                        [
+                                                            html.Label(
+                                                                "Axe Y :",
+                                                                className="fw-bold mb-1",
+                                                            ),
+                                                            dcc.Dropdown(
+                                                                id="y-crit",
+                                                                options=criteria_options,
+                                                                value=criteria_dispo[1],
+                                                            ),
+                                                        ],
+                                                        md=4,
+                                                    ),
+                                                    dbc.Col(
+                                                        [
+                                                            html.Label(
+                                                                "Axe Z :",
+                                                                className="fw-bold mb-1",
+                                                            ),
+                                                            dcc.Dropdown(
+                                                                id="z-crit",
+                                                                options=criteria_options,
+                                                                value=(criteria_dispo[2] if len(criteria_dispo) > 2 else None),
+                                                            ),
+                                                        ],
+                                                        md=4,
+                                                    ),
+                                                ],
+                                                className="mb-3",
+                                            ),
+                                            dcc.Graph(id="crit_plot"),
+                                        ]
+                                    ),
+                                ],
+                                className="shadow-sm",
+                            ),
+                        ],
+                        md=8, # Largeur de la colonne de droite (8/12)
                         className="mb-4",
                     ),
                 ]
@@ -485,7 +484,7 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                 if mode == "3":
                     default_colors = px.colors.qualitative.Plotly
                     color_hex = default_colors[i % len(default_colors)]
-                    rgb_color = px.colors.hex_to_rgb(color_hex) # Renvoie un tuple (R, G, B)
+                    rgb_color = px.colors.hex_to_rgb(color_hex)
                     r, g, b = rgb_color
                     custom_colorscale = [
                         [0.0, f"rgba({r}, {g}, {b}, 0.0)"],
@@ -502,10 +501,11 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                                 coloring='heatmap',
                                 showlines=False
                             ),
-                            line=dict(width=0),
-                            ncontours=4000,
+                            line=dict(width=0.1),
+                            ncontours=40,
                             colorscale=custom_colorscale,
-                            showscale=False
+                            showscale=False,
+                            showlegend=True
                         )
                     )
                 elif mode == "2":
