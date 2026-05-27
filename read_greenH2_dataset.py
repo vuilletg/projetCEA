@@ -1,11 +1,9 @@
 import os
-from turtle import mode
 from dash import ALL, Dash, Input, Output, State, dcc, html
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import alphashape
 import numpy as np
 
 df = None
@@ -220,6 +218,9 @@ def update_all_data(n_clicks, filename):
         {"label": " ".join(cr.split(" ")[1:]), "value": cr}
         for cr in criteria_dispo
     ]
+    contexte_options = [
+        {"label": " ".join(c.split(" ")[1:]), "value": c} for c in contexte_dispo
+    ]
 
     return html.Div(
         [
@@ -250,39 +251,47 @@ def update_all_data(n_clicks, filename):
                                             step=None,
                                             className="mb-4",
                                         ),
+                                        
+                                        # NOUVEAU : Sélection des axes pour le graphique cliquable
+                                        html.Hr(),
+                                        html.H5("Configuration Graphique Contexte", className="text-secondary mt-2"),
+                                        dbc.Row([
+                                            dbc.Col([
+                                                html.Label("Axe X :", className="small fw-bold"),
+                                                dcc.Dropdown(id="x-context-drop", options=contexte_options, value=contexte_dispo[0] if len(contexte_dispo)>0 else None, clearable=False)
+                                            ], md=6),
+                                            dbc.Col([
+                                                html.Label("Axe Y :", className="small fw-bold"),
+                                                dcc.Dropdown(id="y-context-drop", options=contexte_options, value=contexte_dispo[1] if len(contexte_dispo)>1 else None, clearable=False)
+                                            ], md=6),
+                                        ], className="mb-2"),
+                                        
+                                        # NOUVEAU : Graphique de contexte cliquable
+                                        dcc.Graph(id="context_clickable_plot", className="mb-3"),
+                                        
+                                        html.Hr(),
+                                        html.Label("Filtres Manuels (Sliders) :", className="fw-bold text-muted mb-2"),
+                                        
+                                        # MODIFICATION : Tous les sliders sont là, mais enveloppés dans un div individuel avec un ID de type 'context-slider-wrapper'
                                         html.Div(
-                                            id="dynamic-sliders-container",
+                                            id="sliders-container",
                                             children=[
                                                 html.Div(
-                                                    [
+                                                    id={"type": "context-slider-wrapper", "index": contexte_dispo[i]},
+                                                    children=[
                                                         html.Label(
                                                             f"{' '.join(contexte_dispo[i].split(' ')[1:])} :",
                                                             className="fw-bold mt-2",
                                                         ),
                                                         dcc.Slider(
-                                                            id={
-                                                                "type": "context-slider",
-                                                                "index": str(
-                                                                    df[
-                                                                        contexte_dispo[
-                                                                            i
-                                                                        ]
-                                                                    ].unique()
-                                                                ),
-                                                            },
+                                                            id={"type": "context-slider", "index": contexte_dispo[i]},
                                                             min=0,
                                                             max=usagegrid[i] - 1,
                                                             value=0,
                                                             step=1,
                                                             marks={
                                                                 j: str(val)
-                                                                for j, val in enumerate(
-                                                                    df[
-                                                                        contexte_dispo[
-                                                                            i
-                                                                        ]
-                                                                    ].unique()
-                                                                )
+                                                                for j, val in enumerate(df[contexte_dispo[i]].unique())
                                                             },
                                                         ),
                                                     ]
@@ -293,13 +302,13 @@ def update_all_data(n_clicks, filename):
                                     ]
                                 ),
                             ],
-                            className="shadow-sm h-100", # h-100 pour occuper toute la hauteur disponible
+                            className="shadow-sm h-100", 
                         ),
-                        md=4, # Largeur de la colonne Contexte (4/12)
+                        md=6, 
                         className="mb-4",
                     ),
                     
-                    # --- DEUXIÈME COLONNE : TECHNIQUE & CRITÈRES (Superposés) ---
+                    # --- DEUXIÈME COLONNE : TECHNIQUE & CRITÈRES ---
                     dbc.Col(
                         [
                             # Bloc Technique
@@ -343,7 +352,7 @@ def update_all_data(n_clicks, filename):
                                         ]
                                     ),
                                 ],
-                                className="shadow-sm mb-4", # Marge en bas pour séparer du bloc suivant
+                                className="shadow-sm mb-4", 
                             ),
                             
                             # Bloc Critères
@@ -370,7 +379,7 @@ def update_all_data(n_clicks, filename):
                                                                 value=criteria_dispo[0],
                                                             ),
                                                         ],
-                                                        md=4, # Adapté en md=4 car l'espace horizontal est plus restreint
+                                                        md=4, 
                                                         id="x-crit-container",
                                                     ),
                                                     dbc.Col(
@@ -411,7 +420,7 @@ def update_all_data(n_clicks, filename):
                                 className="shadow-sm",
                             ),
                         ],
-                        md=8, # Largeur de la colonne de droite (8/12)
+                        md=6, 
                         className="mb-4",
                     ),
                 ]
@@ -488,6 +497,7 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                     r, g, b = rgb_color
                     custom_colorscale = [
                         [0.0, f"rgba({r}, {g}, {b}, 0.0)"],
+                        [0.1, f"rgba({r}, {g}, {b}, 0.1)"],
                         [0.2, f"rgba({r}, {g}, {b}, 0.3)"],
                         [0.6, f"rgba({r}, {g}, {b}, 0.7)"], 
                         [1.0, f"rgba({r}, {g}, {b}, 1)"]   
@@ -509,6 +519,7 @@ def create_fig(x_col, y_col, z_col=None, mode = 1, year_idx=0, *args):
                         )
                     )
                 elif mode == "2":
+                    import alphashape
                     points = np.column_stack((points_x, points_y))
                     hull = alphashape.alphashape(points, 0)
                     hull_x, hull_y = hull.exterior.xy
@@ -571,7 +582,6 @@ def update_tech_plot_mode_container(x, y, z):
         ]
     )
 
-
 @app.callback(
     Output("crit-plot-mode-container", "children"),
     [
@@ -630,6 +640,100 @@ def update_t(x, y, z, mode, yr):
     else:
         return create_fig(active_axes[0], active_axes[1], active_axes[2], mode, yr, *slice)
 
+
+# ==========================================
+# NOUVEAUX CALLBACKS ET MISES À JOUR
+# ==========================================
+
+# 1. Rendu du scatter plot de Contexte cliquable
+@app.callback(
+    Output("context_clickable_plot", "figure"),
+    [
+        Input("x-context-drop", "value"),
+        Input("y-context-drop", "value"),
+        Input("year-slider-cont", "value")
+    ]
+)
+def update_context_plot(x_ctx, y_ctx, yr_idx):
+    if df is None or not x_ctx or not y_ctx:
+        return go.Figure()
+    
+    selected_year = year_dispo[yr_idx]
+    # On ne filtre QUE par l'année pour voir l'ensemble du nuage de points contextuel 
+    df_filtered = df[df["Year"].astype(str) == str(selected_year)]
+    
+    x_label = " ".join(x_ctx.split(" ")[1:])
+    y_label = " ".join(y_ctx.split(" ")[1:])
+    
+    fig = px.scatter(
+        df_filtered,
+        x=x_ctx,
+        y=y_ctx,
+        color="Technology",
+        title=f"Sélectionnez un point ({x_label} vs {y_label})",
+        labels={x_ctx: x_label, y_ctx: y_label},
+        template="plotly_white"
+    )
+    fig.update_layout(
+        margin=dict(l=40, r=40, t=40, b=40),
+        clickmode='event+select', # Force la capture des événements au clic
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    return fig
+
+
+# 2. Callback Maître : Gère à la fois le masquage CSS des sliders (display: none)
+# ET force la valeur du slider si l'utilisateur clique sur le graphique !
+@app.callback(
+    [
+        Output({"type": "context-slider-wrapper", "index": ALL}, "style"),
+        Output({"type": "context-slider", "index": ALL}, "value")
+    ],
+    [
+        Input("x-context-drop", "value"),
+        Input("y-context-drop", "value"),
+        Input("context_clickable_plot", "clickData")
+    ],
+    [
+        State({"type": "context-slider", "index": ALL}, "id"),
+        State({"type": "context-slider", "index": ALL}, "value")
+    ]
+)
+def handle_sliders_visibility_and_values(x_ctx, y_ctx, click_data, slider_ids, current_values):
+    styles = []
+    new_values = list(current_values)
+    
+    # Récupération des valeurs issues du clic (si clic il y a)
+    clicked_x_val = None
+    clicked_y_val = None
+    if click_data and "points" in click_data:
+        clicked_x_val = click_data["points"][0].get("x")
+        clicked_y_val = click_data["points"][0].get("y")
+
+    # On boucle sur l'ensemble des sliders de l'application
+    for i, s_id in enumerate(slider_ids):
+        col_name = s_id["index"]
+        
+        # SI la colonne est sélectionnée dans l'un des Dropdowns -> Masquer (display: none)
+        if col_name == x_ctx or col_name == y_ctx:
+            styles.append({"display": "none"})
+            
+            # De plus, si un clic vient d'avoir lieu, on force l'index du slider correspondant à la valeur cliquée
+            unique_vals = list(df[col_name].unique())
+            if col_name == x_ctx and clicked_x_val is not None:
+                if clicked_x_val in unique_vals:
+                    new_values[i] = unique_vals.index(clicked_x_val)
+            elif col_name == y_ctx and clicked_y_val is not None:
+                if clicked_y_val in unique_vals:
+                    new_values[i] = unique_vals.index(clicked_y_val)
+        else:
+            # Sinon, afficher normalement le slider
+            styles.append({"display": "block"})
+            
+    return styles, new_values
+
+
+# 3. Mise à jour finale du bloc Critères
 @app.callback(
     Output("crit_plot", "figure"),
     [
@@ -638,22 +742,29 @@ def update_t(x, y, z, mode, yr):
         Input("z-crit", "value"),
         Input("crit-plot-mode", "value"),
         Input("year-slider-cont", "value"),
+        Input({"type": "context-slider", "index": ALL}, "id"),
         Input({"type": "context-slider", "index": ALL}, "value"),
     ],
 )
-def update_cr(x, y, z, mode, yr, slider_values):
+def update_cr(x, y, z, mode, yr, slider_ids, slider_values):
     if df is None:
         return go.Figure()
     selected_year = year_dispo[yr]
     
+    # On map les IDs actuels à leurs valeurs (les masqués ont quand même leurs valeurs forcées par le clic !)
+    mapping_sliders = {sid["index"]: sval for sid, sval in zip(slider_ids, slider_values)}
+    
+    # On reconstruit la liste brute ordonnée selon 'contexte_dispo' pour respecter le Reshape matriciel
+    full_slider_values = [mapping_sliders[col] for col in contexte_dispo]
+            
     active_axes = [axis for axis in [x, y, z] if axis is not None]
     axes_count = len(active_axes)
     if axes_count == 1:
-        return create_boxplot(active_axes[0], mode, selected_year, slider_values)
+        return create_boxplot(active_axes[0], mode, selected_year, full_slider_values)
     elif axes_count == 2:
-        return create_fig(active_axes[0], active_axes[1], None, mode, yr, *slider_values)
+        return create_fig(active_axes[0], active_axes[1], None, mode, yr, *full_slider_values)
     else:
-        return create_fig(active_axes[0], active_axes[1], active_axes[2], mode, yr, *slider_values)
+        return create_fig(active_axes[0], active_axes[1], active_axes[2], mode, yr, *full_slider_values)
 
 if __name__ == "__main__":
     app.run(debug=True)
