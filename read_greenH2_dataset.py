@@ -368,8 +368,8 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
     if grouped.empty:
         return go.Figure()
 
-    idx_max = grouped.groupby([y_ctx, x_ctx])[crit_ctx].idxmax()
-    winners = grouped.loc[idx_max]
+    idx_min = grouped.groupby([y_ctx, x_ctx])[crit_ctx].idxmin()
+    winners = grouped.loc[idx_min]
 
     # Sécurisation : On force le type string et le tri
     x_bins = [str(v) for v in sorted(df[x_ctx].unique())]
@@ -420,7 +420,10 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
         yaxis=dict(title=y_label, type='category'),
         clickmode='event+select',
         template="plotly_white",
-        margin=dict(l=40, r=40, t=50, b=40)
+        margin=dict(l=40, r=40, t=50, b=40),
+        width=500, height=500,
+        
+        
     )
     return fig
 
@@ -434,37 +437,14 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
      State({"type": "context-slider", "index": ALL}, "value")]
 )
 def handle_sliders_visibility_and_values(x_ctx, y_ctx, click_data, slider_ids, current_values):
-    if df is None:
-        return [no_update] * len(slider_ids), list(current_values)
-        
     styles = []
     new_values = list(current_values)
     
-    # 1. Analyse chirurgicale du clickData
     if click_data and "points" in click_data:
         point = click_data["points"][0]
-        
-        # Listes de référence triées (identiques au Heatmap)
-        x_bins_ref = [str(v) for v in sorted(df[x_ctx].unique())]
-        y_bins_ref = [str(v) for v in sorted(df[y_ctx].unique())]
-        
-        # Stratégie A : Plotly renvoie le libellé texte direct
-        raw_x = point.get("x")
-        raw_y = point.get("y")
-        
-        # Stratégie B (Secours) : Plotly renvoie l'index de la case (coordonnées matricielles)
-        # 'x' ou 'y' peuvent être reçus sous forme d'int si Plotly l'interprète comme un index
-        if isinstance(raw_x, int) and raw_x < len(x_bins_ref):
-            clicked_x_label = x_bins_ref[raw_x]
-        else:
-            clicked_x_label = str(raw_x) if raw_x is not None else None
-            
-        if isinstance(raw_y, int) and raw_y < len(y_bins_ref):
-            clicked_y_label = y_bins_ref[raw_y]
-        else:
-            clicked_y_label = str(raw_y) if raw_y is not None else None
+        clicked_x_label = str(point.get("x"))
+        clicked_y_label = str(point.get("y"))
 
-        # 2. Assignation des nouvelles valeurs aux sliders concernés
         for i, s_id in enumerate(slider_ids):
             col_name = s_id["index"]
             unique_vals = [str(v) for v in sorted(list(df[col_name].unique()))]
@@ -474,11 +454,10 @@ def handle_sliders_visibility_and_values(x_ctx, y_ctx, click_data, slider_ids, c
             elif col_name == y_ctx and clicked_y_label in unique_vals:
                 new_values[i] = unique_vals.index(clicked_y_label)
 
-    # 3. Gestion des visibilités
     for s_id in slider_ids:
         col_name = s_id["index"]
         if col_name == x_ctx or col_name == y_ctx:
-            styles.append({"display": "none"}) # Tu peux repasser à "block" temporairement pour débugger
+            styles.append({"display": "none"})
         else:
             styles.append({"display": "block"})
             
@@ -486,13 +465,18 @@ def handle_sliders_visibility_and_values(x_ctx, y_ctx, click_data, slider_ids, c
 
 
 # MODIFICATION ICI : On cible l'attribut "options" au lieu de "children"
-@app.callback(Output("tech-plot-mode", "options"), [Input("x-tech", "value"), Input("y-tech", "value"), Input("z-tech", "value")])
+@app.callback(
+    Output("tech-plot-mode", "options"), 
+    [Input("x-tech", "value"), Input("y-tech", "value"), Input("z-tech", "value")]
+)
 def update_tech_plot_mode_container(x, y, z):
     axes_count = sum(1 for axis in [x, y, z] if axis is not None)
-    options = [{"label": " Boxplot", "value": "1"}, {"label": " Violin", "value": "2"}] if axes_count == 1 else \
-              [{"label": " points 2d", "value": "1"}, {"label": " surface 2d", "value": "2"}, {"label": " densité 2d", "value": "3"}] if axes_count == 2 else \
-              [{"label": " points 3d", "value": "1"}, {"label": " surface 3d", "value": "2"}]
-    return options
+    if axes_count == 1:
+        return [{"label": " Boxplot", "value": "1"}, {"label": " Violin", "value": "2"}]
+    elif axes_count == 2:
+        return [{"label": " points 2d", "value": "1"}, {"label": " surface 2d", "value": "2"}, {"label": " densité 2d", "value": "3"}]
+    else:
+        return [{"label": " points 3d", "value": "1"}, {"label": " surface 3d", "value": "2"}]
 
 # MODIFICATION ICI : Même chose pour le graphe des critères
 @app.callback(Output("crit-plot-mode", "options"), [Input("x-crit", "value"), Input("y-crit", "value"), Input("z-crit", "value")])
@@ -505,7 +489,8 @@ def update_crit_plot_mode_container(x, y, z):
 
 @app.callback(
     Output("tech_plot", "figure"),
-    [Input("x-tech", "value"), Input("y-tech", "value"), Input("z-tech", "value"), Input("tech-plot-mode", "value"), Input("year-slider-cont", "value")]
+    [Input("x-tech", "value"), 
+     Input("y-tech", "value"), Input("z-tech", "value"), Input("tech-plot-mode", "value"), Input("year-slider-cont", "value")]
 )
 def update_tech_graph(x, y, z, mode, yr):
     if df is None: return go.Figure()
