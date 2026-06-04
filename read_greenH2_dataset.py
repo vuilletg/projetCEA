@@ -345,10 +345,11 @@ def toggle_crit_collapse(n, is_open):
         Input("criteria-drop", "value"),
         Input("year-slider-cont", "value"),
         Input({"type": "context-slider", "index": ALL}, "id"),
-        Input({"type": "context-slider", "index": ALL}, "value")
+        Input({"type": "context-slider", "index": ALL}, "value"),
+        Input("context_clickable_plot", "clickData")  # <-- AJOUT ICI pour détecter le clic
     ]
 )
-def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_values):
+def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_values, click_data):
     if df is None or not x_ctx or not y_ctx or not crit_ctx:
         return go.Figure()
     
@@ -371,7 +372,6 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
     idx_min = grouped.groupby([y_ctx, x_ctx])[crit_ctx].idxmin()
     winners = grouped.loc[idx_min]
 
-    # Sécurisation : On force le type string et le tri
     x_bins = [str(v) for v in sorted(df[x_ctx].unique())]
     y_bins = [str(v) for v in sorted(df[y_ctx].unique())]
     tech_to_idx = {tech: i for i, tech in enumerate(techno_dispo)}
@@ -383,7 +383,6 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
     y_to_pos = {val: i for i, val in enumerate(y_bins)}
 
     for _, row in winners.iterrows():
-        # Conversion systématique en string pour mapper les coordonnées
         str_x = str(row[x_ctx])
         str_y = str(row[y_ctx])
         if str_y in y_to_pos and str_x in x_to_pos:
@@ -399,7 +398,6 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
         base_color = plotly_colors[idx % len(plotly_colors)]
         custom_colorscale.extend([[idx / N_tech, base_color], [(idx + 1) / N_tech, base_color]])
 
-    # Génération du Heatmap avec axes textuels explicites
     fig = go.Figure(data=go.Heatmap(
         x=x_bins,
         y=y_bins,
@@ -422,9 +420,29 @@ def update_context_plot(x_ctx, y_ctx, crit_ctx, yr_idx, slider_ids, slider_value
         template="plotly_white",
         margin=dict(l=40, r=40, t=50, b=40),
         width=500, height=500,
-        
-        
     )
+
+    # --- SÉLECTION DE LA CASE ACTIVE (NOIR) ---
+    # Si le callback a été déclenché par un clic et qu'on a des points valides
+    if click_data and "points" in click_data:
+        point = click_data["points"][0]
+        clicked_x = point.get("x")
+        clicked_y = point.get("y")
+        
+        # On s'assure que la case cliquée fait toujours partie des axes actuels
+        if clicked_x in x_bins and clicked_y in y_bins:
+            fig.add_shape(
+                type="rect",
+                # Pour un axe de type 'category', les coordonnées de la forme s'alignent 
+                # sur les index. On retire 0.5 pour englober toute la cellule.
+                x0=x_bins.index(clicked_x) - 0.5,
+                x1=x_bins.index(clicked_x) + 0.5,
+                y0=y_bins.index(clicked_y) - 0.5,
+                y1=y_bins.index(clicked_y) + 0.5,
+                line=dict(color="black", width=2), # Contour noir épais
+                fillcolor="rgba(0,0,0,0)" # Intérieur transparent pour voir la couleur en dessous
+            )
+            
     return fig
 
 @app.callback(
